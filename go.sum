@@ -1,0 +1,4 @@
+github.com/google/uuid v1.1.2 h1:EVhdT+1Kseyi1/pUmXKaFxYsDNy9RQYkMWRH68J/W7Y=
+github.com/google/uuid v1.1.2/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
+github.com/rilopez/redis-wire-protocol v0.0.0-20200328132210-c1008f0dd177 h1:b8gOVTQ5qyZaPOlnNdpLY53Xi+d5x9EoKuEAbPItfOI=
+github.com/rilopez/redis-wire-protocol v0.0.0-20200328132210-c1008f0dd177/go.mod h1:KOkSK8TA4ez8kxcEAVPDRjT1SUQAbif5gsA1KcfEXK4=

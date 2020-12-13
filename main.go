@@ -18,7 +18,6 @@ func main() {
 type serverHandler func(port uint, httpPort uint, serverMaxClients uint)
 
 func initCommandLineInterface(handleServerCmd serverHandler) {
-
 	serverCmd := flag.NewFlagSet("server", flag.ExitOnError)
 	serverPort := serverCmd.Uint("port", 6379, "port number to listen for TCP connections of clients implementing the redis protocol")
 	serverMaxClients := serverCmd.Uint("max-clients", 100000, "Max number of clients accepted by the server ")

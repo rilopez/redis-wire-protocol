@@ -1,7 +1,11 @@
 package server
 
 import (
+	"fmt"
+	"github.com/rilopez/redis-wire-protocol/internal/common"
+	"github.com/rilopez/redis-wire-protocol/internal/device"
 	"log"
+	"net"
 	"sync"
 	"time"
 )
@@ -11,7 +15,7 @@ func Start(port uint, httpPort uint, serverMaxClients uint) {
 	log.Printf("starting server demons  with \n  - port:%d\n - httpPort:%d\n -serverMaxClients: %d\n",
 		port, httpPort, serverMaxClients)
 
-	core := newCore(time.Now, port, serverMaxClients)
+	core := newServer(time.Now, port, serverMaxClients)
 	httpd := newHttpd(core, httpPort)
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -20,4 +24,172 @@ func Start(port uint, httpPort uint, serverMaxClients uint) {
 
 	wg.Wait()
 
+}
+
+// server maintains a map of clients and communication channels
+type server struct {
+	clients          map[uint64]*connectedClient
+	commands         chan common.Command
+	port             uint
+	nextClientId     uint64
+	serverMaxClients uint
+	now              func() time.Time
+	mux              sync.Mutex
+}
+
+type connectedClient struct {
+	ID              uint64
+	callbackChannel chan common.Command
+	lastCMDEpoch    int64
+	lastCMD         common.CommandID
+}
+
+// NewCore allocates a Core struct
+func newServer(now func() time.Time, port uint, serverMaxClients uint) *server {
+	return &server{
+		clients:          make(map[uint64]*connectedClient),
+		commands:         make(chan common.Command),
+		now:              now,
+		port:             port,
+		nextClientId:     1,
+		serverMaxClients: serverMaxClients,
+	}
+}
+
+func (s *server) numConnectedClients() int {
+	s.mux.Lock()
+	numActiveClients := len(s.clients)
+	s.mux.Unlock()
+	return numActiveClients
+}
+
+func (s *server) listenConnections(wg *sync.WaitGroup) {
+	address := fmt.Sprintf(":%d", s.port)
+	ln, err := net.Listen("tcp", address)
+	if err != nil {
+		log.Fatalf("ERR Failed to start tcp listener at %s,  %v", address, err)
+	}
+	defer func() {
+		ln.Close()
+		wg.Done()
+	}()
+
+	log.Printf("Server started listening for connections at %s ", address)
+	for {
+		conn, err := ln.Accept()
+		if err != nil {
+			log.Printf("Failed to accept connection: %v", err)
+			continue
+		}
+		log.Print("DEBUG: new client connection")
+		client, err := s.registerClient(conn)
+		if err != nil {
+			conn.Close()
+			log.Printf("ERR trying to register a new client: %v", err)
+			continue
+		}
+
+		log.Printf("client connection from %v", conn.RemoteAddr())
+		wg.Add(1)
+		go client.Read(wg)
+	}
+
+}
+
+func (s *server) registerClient(conn net.Conn) (*device.Client, error) {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+	numActiveClients := uint(len(s.clients))
+	if numActiveClients >= s.serverMaxClients {
+		// Limit the number of active clients to prevent resource exhaustion
+		return nil, fmt.Errorf("ERR reached serverMaxClients:%d, there are already %d connected clients", s.serverMaxClients, numActiveClients)
+	}
+
+	if _, exists := s.clients[s.nextClientId]; exists {
+		log.Panicf("duplicated client ID %d", s.nextClientId)
+	}
+
+	callbackChan := make(chan common.Command)
+	client, err := device.NewClient(
+		conn,
+		s.nextClientId,
+		s.commands,
+		callbackChan,
+		s.now,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("ERR trying to create a client worker for the connection, %v", err)
+	}
+
+	s.clients[client.ID] = &connectedClient{
+		ID:              client.ID,
+		callbackChannel: callbackChan,
+	}
+	s.nextClientId++
+
+	return client, nil
+
+}
+
+// Run handles channels inbound communications from connected clients
+func (s *server) run(wg *sync.WaitGroup) {
+	wg.Add(1)
+	defer wg.Done()
+
+	go s.listenConnections(wg)
+
+	for {
+		var err error
+		select {
+		case cmd := <-s.commands:
+			client, exists := s.clientByID(cmd.ClientID)
+			if !exists {
+				err = fmt.Errorf("client ID  %d does not exists", cmd.ClientID)
+			}
+			client.lastCMD = cmd.CMD
+			client.lastCMDEpoch = s.now().UnixNano()
+
+			switch cmd.CMD {
+			case common.DEREGISTER:
+				err = s.deregister(client.ID)
+			case common.SET:
+				err = s.handleSET(cmd.Arguments)
+			default:
+				err = fmt.Errorf("unknown Command %d", cmd.CMD)
+			}
+		}
+		if err != nil {
+			log.Printf("ERR %v", err)
+		}
+	}
+}
+
+func (s *server) clientByID(ID uint64) (*connectedClient, bool) {
+	s.mux.Lock()
+	dev, exists := s.clients[ID]
+	s.mux.Unlock()
+
+	return dev, exists
+}
+
+func (s *server) handleSET(args common.CommandArguments) (err error) {
+	setArgs, ok := args.(common.SETArguments)
+	if !ok {
+		return fmt.Errorf("invalid SET argments %v", args)
+	}
+
+	log.Printf("SET with args  %v", setArgs)
+
+	//TODO store key value in memory
+
+	return nil
+}
+
+func (s *server) deregister(clientID uint64) error {
+	log.Printf("DEBUG trying to deregister client with ID %d ", clientID)
+	s.mux.Lock()
+	delete(s.clients, clientID)
+	s.mux.Unlock()
+	log.Printf("client with ID %d desconnected succesfuly", clientID)
+	return nil
 }

@@ -4,10 +4,10 @@ Package server provides functionality for two kind of servers
  - HTTP json healthcheck endpoints
 
 The TCP redis server uses goroutines to handle each connected
-client.  3 channels are used to communicate the client data to the server core
+client.  3 channels are used to communicate the client data to the server server
 
 	commands chan common.Command
-	    used to by client connections to send cmd & data to server core.
+	    used to by client connections to send cmd & data to server server.
 	    currently the server implements SET, GET & DEL commands
 	Logouts  chan *device.Client
 		used to send clients with closed or timeout connections. The reciever

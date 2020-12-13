@@ -1,21 +1,12 @@
 package common
 
-import "github.com/google/uuid"
-
 // CommandID command id type
 type CommandID int
 
 const (
-	// LOGIN used when client connect to our server
-	LOGIN CommandID = iota
-	// LOGOUT used to indicate the client to log itself out
-	LOGOUT
-	// KILL used to indicate a client to terminate its reading loop
-	KILL
-	// READING sent by the server after a succesfull login
-	WELCOME
-
-	// Redis commands
+	// UNKNOWN ...
+	UNKNOWN CommandID = iota
+	// Redis supported commands
 
 	// GET https://redis.io/commands/get
 	GET
@@ -25,14 +16,17 @@ const (
 
 	// DEL https://redis.io/commands/del
 	DEL
-	// UNKNOWN ...
-	UNKNOWN
+
+	// DEREGISTER used to indicate the client to log itself out
+	DEREGISTER
+	// KILL used to indicate a client to terminate its reading loop
+	KILL
 )
 
 // Command is used to send data between clients and server core
 type Command struct {
-	ID              CommandID
-	Sender          uuid.UUID
+	CMD             CommandID
+	ClientID        uint64
 	CallbackChannel chan Command
 	Arguments       CommandArguments
 }

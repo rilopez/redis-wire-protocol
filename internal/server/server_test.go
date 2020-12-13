@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"reflect"
 	"testing"
 
 	"github.com/rilopez/redis-wire-protocol/internal/common"
@@ -10,11 +9,11 @@ import (
 )
 
 func TestNewCore(t *testing.T) {
-	core := newCore(common.FrozenInTime, uint(1337), 2)
+	core := newServer(common.FrozenInTime, uint(1337), 2)
 	expectedClientsLen := 0
-	actualClientsLen := core.numConnectedDevices()
+	actualClientsLen := core.numConnectedClients()
 	if actualClientsLen != expectedClientsLen {
-		t.Errorf("expected len(core.client) to equal %d but got %d", expectedClientsLen, actualClientsLen)
+		t.Errorf("expected len(server.client) to equal %d but got %d", expectedClientsLen, actualClientsLen)
 	}
 }
 
@@ -34,36 +33,9 @@ func TestOutputReading(t *testing.T) {
 
 }
 
-func TestCore_HandleReading(t *testing.T) {
-	//Setup
-	expectedLastReadingEpoch := common.FrozenInTime().UnixNano()
-	expectedPayload := device.CreateRandReadingBytes()
-
-	core := newCore(common.FrozenInTime, uint(1337), 2)
-	expectedClientIMEI := uint64(448324242329542)
-	dev := &connectedClient{}
-	core.clients[expectedClientIMEI] = dev
-
-	//Exercise
-	core.handleSET(expectedClientIMEI, expectedPayload[:])
-
-	if dev.lastReadingEpoch != expectedLastReadingEpoch {
-		t.Errorf("expected LastReadingEpoch to equal %d but got %d",
-			expectedLastReadingEpoch,
-			dev.lastReadingEpoch)
-	}
-	expectedReading := &device.Reading{}
-	expectedReading.Decode(expectedPayload[:])
-	if !reflect.DeepEqual(expectedReading, dev.lastReading) {
-		t.Errorf("expected LastReading to equal %v but got %v",
-			expectedReading,
-			dev.lastReading)
-	}
-}
-
 func TestCore_HandleReading_UnknownClient(t *testing.T) {
 	//Setup
-	core := newCore(common.FrozenInTime, uint(1337), 2)
+	core := newServer(common.FrozenInTime, uint(1337), 2)
 
 	//Exercise
 
@@ -76,7 +48,7 @@ func TestCore_HandleReading_UnknownClient(t *testing.T) {
 
 func TestCore_HandleReading_InvalidPayload(t *testing.T) {
 	//Setup
-	core := newCore(common.FrozenInTime, uint(1337), 2)
+	core := newServer(common.FrozenInTime, uint(1337), 2)
 	expectedClientIMEI := uint64(448324242329542)
 	dev := &connectedClient{}
 	core.clients[expectedClientIMEI] = dev
@@ -96,7 +68,7 @@ func TestCore_HandleReading_InvalidPayload(t *testing.T) {
 }
 
 func TestCore_Register(t *testing.T) {
-	core := newCore(common.FrozenInTime, uint(1337), 2)
+	core := newServer(common.FrozenInTime, uint(1337), 2)
 	expectedIMEI := uint64(448324242329542)
 	callBackChannel := make(chan common.Command, 1)
 	err := core.register(expectedIMEI, callBackChannel)
@@ -109,14 +81,14 @@ func TestCore_Register(t *testing.T) {
 		t.Errorf("clients map should contain an entry for IMEI: %d", expectedIMEI)
 	}
 	cmd := <-callBackChannel
-	if cmd.ID != common.WELCOME {
-		t.Errorf("Expected callback channel to receive a WELCOME cmd but got %v", cmd.ID)
+	if cmd.CMD != common.WELCOME {
+		t.Errorf("Expected callback channel to receive a WELCOME cmd but got %v", cmd.CMD)
 	}
 }
 
 func TestCore_Register_ExistingClient(t *testing.T) {
 	// Setup
-	core := newCore(common.FrozenInTime, uint(1337), 2)
+	core := newServer(common.FrozenInTime, uint(1337), 2)
 	expectedIMEI := uint64(448324242329542)
 	callBackChannel := make(chan common.Command, 2)
 
@@ -133,7 +105,7 @@ func TestCore_Register_ExistingClient(t *testing.T) {
 	}
 
 	cmd := <-callBackChannel
-	if cmd.ID != common.KILL {
+	if cmd.CMD != common.KILL {
 		t.Error("Expecting a kill command from the back channel ")
 	}
 
@@ -141,7 +113,7 @@ func TestCore_Register_ExistingClient(t *testing.T) {
 
 func TestCore_Deregister_ExistingClient(t *testing.T) {
 	// Setup
-	core := newCore(common.FrozenInTime, uint(1337), 2)
+	core := newServer(common.FrozenInTime, uint(1337), 2)
 	imei := uint64(448324242329542)
 	callBackChannel := make(chan common.Command, 1)
 
@@ -159,7 +131,7 @@ func TestCore_Deregister_ExistingClient(t *testing.T) {
 
 func TestCore_Deregister_UnknownClient(t *testing.T) {
 	// Setup
-	core := newCore(common.FrozenInTime, uint(1337), 2)
+	core := newServer(common.FrozenInTime, uint(1337), 2)
 	expectedClientIMEI := uint64(448324242329542)
 
 	//Exercise
@@ -175,7 +147,7 @@ func ExampleCore_handleReading() {
 
 	expectedPayload := device.NewPayload(9.127577, 12545.598440, -51.432503, -42.963412, 31.805817)
 
-	core := newCore(common.FrozenInTime, uint(1337), 2)
+	core := newServer(common.FrozenInTime, uint(1337), 2)
 	expectedIMEI := uint64(448324242329542)
 	callBackChannel := make(chan common.Command, 1)
 
@@ -195,7 +167,7 @@ func BenchmarkCore_HandleReading(b *testing.B) {
 	//Setup
 	expectedPayload := device.CreateRandReadingBytes()
 
-	core := newCore(common.FrozenInTime, uint(1337), 2)
+	core := newServer(common.FrozenInTime, uint(1337), 2)
 
 	expectedClientIMEI := uint64(448324242329542)
 

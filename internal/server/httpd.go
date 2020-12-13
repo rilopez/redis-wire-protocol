@@ -13,7 +13,7 @@ import (
 )
 
 type httpd struct {
-	core *core
+	core *server
 	port uint
 }
 type stats struct {
@@ -29,7 +29,7 @@ type timeStampedReading struct {
 	Reading        *device.Reading `json:"reading"`
 }
 
-func newHttpd(core *core, port uint) *httpd {
+func newHttpd(core *server, port uint) *httpd {
 	return &httpd{
 		core: core,
 		port: port,
@@ -44,7 +44,7 @@ func (d *httpd) statsHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	stats := &stats{
-		NumConnectedClients: d.core.numConnectedDevices(),
+		NumConnectedClients: d.core.numConnectedClients(),
 		NumCPU:              runtime.NumCPU(),
 		NumGoroutine:        runtime.NumGoroutine(),
 	}

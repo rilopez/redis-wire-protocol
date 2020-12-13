@@ -45,15 +45,15 @@ func TestRead(t *testing.T) {
 	case <-timeout:
 		t.Fatal("Timeout")
 	case cmd := <-outbound:
-		switch cmd.ID {
-		case common.LOGOUT:
-			if cmd.Sender != expectedIMEI {
-				t.Errorf("expected client device with IMEI %v was not sent to logout channel  got %v", expectedIMEI, cmd.Sender)
+		switch cmd.CMD {
+		case common.DEREGISTER:
+			if cmd.ClientID != expectedIMEI {
+				t.Errorf("expected client device with IMEI %v was not sent to logout channel  got %v", expectedIMEI, cmd.ClientID)
 			}
 
 		case common.LOGIN:
-			if cmd.Sender != expectedIMEI {
-				t.Errorf("expecterd client device with IMEI %v was not sent to login channel  got %v", expectedIMEI, cmd.Sender)
+			if cmd.ClientID != expectedIMEI {
+				t.Errorf("expecterd client device with IMEI %v was not sent to login channel  got %v", expectedIMEI, cmd.ClientID)
 			}
 
 		}

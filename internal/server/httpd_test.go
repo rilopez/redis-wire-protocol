@@ -12,7 +12,7 @@ import (
 )
 
 func TestHttpd_StatsHandler(t *testing.T) {
-	core := newCore(common.FrozenInTime, uint(1337), 2)
+	core := newServer(common.FrozenInTime, uint(1337), 2)
 	httpd := newHttpd(core, 80)
 	req, err := http.NewRequest("GET", "/stats", nil)
 	if err != nil {
@@ -39,7 +39,7 @@ func TestHttpd_StatsHandler(t *testing.T) {
 }
 
 func TestHttpd_StatusHandler(t *testing.T) {
-	core := newCore(common.FrozenInTime, uint(1337), 2)
+	core := newServer(common.FrozenInTime, uint(1337), 2)
 	httpd := newHttpd(core, 80)
 	expectedIMEI := uint64(448324242329542)
 	callBackChannel := make(chan common.Command, 1)
@@ -72,7 +72,7 @@ func TestHttpd_StatusHandler(t *testing.T) {
 }
 
 func TestHttpd_ReadingHandler(t *testing.T) {
-	core := newCore(common.FrozenInTime, uint(1337), 2)
+	core := newServer(common.FrozenInTime, uint(1337), 2)
 	httpd := newHttpd(core, 80)
 	expectedIMEI := uint64(448324242329542)
 	reading := &device.Reading{}

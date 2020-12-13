@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/rilopez/redis-wire-protocol/internal/common"
 	"github.com/rilopez/redis-wire-protocol/internal/device"
+	"github.com/rilopez/redis-wire-protocol/internal/resp"
 	"log"
 	"net"
 	"sync"
@@ -29,6 +30,7 @@ func Start(port uint, httpPort uint, serverMaxClients uint) {
 // server maintains a map of clients and communication channels
 type server struct {
 	clients          map[uint64]*connectedClient
+	db               map[string]*string
 	commands         chan common.Command
 	port             uint
 	nextClientId     uint64
@@ -48,6 +50,7 @@ type connectedClient struct {
 func newServer(now func() time.Time, port uint, serverMaxClients uint) *server {
 	return &server{
 		clients:          make(map[uint64]*connectedClient),
+		db:               make(map[string]*string),
 		commands:         make(chan common.Command),
 		now:              now,
 		port:             port,
@@ -140,6 +143,7 @@ func (s *server) run(wg *sync.WaitGroup) {
 
 	for {
 		var err error
+		var response = ""
 		select {
 		case cmd := <-s.commands:
 			client, exists := s.clientByID(cmd.ClientID)
@@ -153,14 +157,26 @@ func (s *server) run(wg *sync.WaitGroup) {
 			case common.DEREGISTER:
 				err = s.deregister(client.ID)
 			case common.SET:
-				err = s.handleSET(cmd.Arguments)
+				response, err = s.handleSET(cmd.Arguments)
+			case common.GET:
+				response, err = s.handleGET(client, cmd.Arguments)
 			default:
 				err = fmt.Errorf("unknown Command %d", cmd.CMD)
 			}
+
+			if len(response) != 0 {
+				client.callbackChannel <- common.Command{
+					CMD: common.RESPONSE,
+					Arguments: common.RESPONSEArguments{
+						Response: response,
+					},
+				}
+			}
+			if err != nil {
+				log.Printf("ERR %v", err)
+			}
 		}
-		if err != nil {
-			log.Printf("ERR %v", err)
-		}
+
 	}
 }
 
@@ -172,15 +188,54 @@ func (s *server) clientByID(ID uint64) (*connectedClient, bool) {
 	return dev, exists
 }
 
-func (s *server) handleSET(args common.CommandArguments) (err error) {
+func (s *server) handleSET(args common.CommandArguments) (response string, err error) {
 	setArgs, ok := args.(common.SETArguments)
 	if !ok {
-		return fmt.Errorf("invalid SET argments %v", args)
+		return "", fmt.Errorf("invalid SET argments %v", args)
 	}
 
 	log.Printf("SET with args  %v", setArgs)
 
-	//TODO store key value in memory
+	s.mux.Lock()
+	s.db[setArgs.Key] = &setArgs.Value
+	s.mux.Unlock()
+
+	return resp.SimpleString("OK"), nil
+}
+
+func (s *server) handleGET(client *connectedClient, args common.CommandArguments) (response string, err error) {
+	getArgs, ok := args.(common.GETArguments)
+	if !ok {
+		return "-ERR", fmt.Errorf("invalid GET argments %v", args)
+	}
+
+	log.Printf("GET with args  %v", getArgs)
+
+	//TODO get  key value from memory
+
+	s.mux.Lock()
+	value, exists := s.db[getArgs.Key]
+	s.mux.Unlock()
+	if !exists {
+		return "-ERR unknown key", fmt.Errorf("invalid key %s", getArgs.Key)
+	}
+	return resp.BulkString(*value), nil
+}
+
+func (s *server) handleDEL(args common.CommandArguments) (err error) {
+	delArgs, ok := args.(common.DELArguments)
+	if !ok {
+		return fmt.Errorf("invalid GET argments %v", args)
+	}
+
+	s.mux.Lock()
+	for _, k := range delArgs.Keys {
+		delete(s.db, k)
+	}
+	s.mux.Unlock()
+	log.Printf("DEL with args  %v", delArgs)
+
+	//TODO get  key value from memory
 
 	return nil
 }

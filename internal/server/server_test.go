@@ -40,7 +40,7 @@ func TestCore_HandleReading_UnknownClient(t *testing.T) {
 	//Exercise
 
 	unknownIMEI := uint64(123)
-	err := core.handleSET(unknownIMEI, []byte{1, 2})
+	err := core.handleSET([]byte{1, 2})
 	if err == nil {
 		t.Errorf("expected get an error for unknown client %d", unknownIMEI)
 	}
@@ -54,14 +54,14 @@ func TestCore_HandleReading_InvalidPayload(t *testing.T) {
 	core.clients[expectedClientIMEI] = dev
 
 	//Exercise bound check panic
-	errBoundCheckPanic := core.handleSET(expectedClientIMEI, []byte{1, 2})
+	errBoundCheckPanic := core.handleSET([]byte{1, 2})
 	if errBoundCheckPanic == nil {
 		t.Errorf("expected get an error for unknown client %d", expectedClientIMEI)
 	}
 
 	invalidPayload := device.NewPayload(9999999, 9999999, 9999999, 9999999, 9999999)
 
-	errInvalidPayload := core.handleSET(expectedClientIMEI, invalidPayload[:])
+	errInvalidPayload := core.handleSET(invalidPayload[:])
 	if errInvalidPayload == nil {
 		t.Errorf("expected get an error for unknown client %d", expectedClientIMEI)
 	}
@@ -158,7 +158,7 @@ func ExampleCore_handleReading() {
 	}
 	//Exercise
 
-	core.handleSET(expectedIMEI, expectedPayload[:])
+	core.handleSET(expectedPayload[:])
 
 	// Output: 1596397680000000000,448324242329542,9.127577,12545.598440,-51.432503,-42.963412,31.805817
 }
@@ -185,7 +185,7 @@ func BenchmarkCore_HandleReading(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		fmt.Printf("reading %d of %d readings", i, b.N)
-		err := core.handleSET(expectedClientIMEI, expectedPayload[:])
+		err := core.handleSET(expectedPayload[:])
 		if err != nil {
 			b.Fail()
 		}

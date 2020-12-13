@@ -28,3 +28,7 @@ func Integer(v int) string {
 func BulkString(str string) string {
 	return fmt.Sprintf("$%d\r\n%s\r\n", len(str), str)
 }
+
+func SimpleString(str string) string {
+	return fmt.Sprintf("+%s\r\n", str)
+}

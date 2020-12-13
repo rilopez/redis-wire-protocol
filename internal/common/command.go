@@ -21,6 +21,8 @@ const (
 	DEREGISTER
 	// KILL used to indicate a client to terminate its reading loop
 	KILL
+	//RESPONSE ...
+	RESPONSE
 )
 
 // Command is used to send data between clients and server core
@@ -32,6 +34,10 @@ type Command struct {
 }
 
 type CommandArguments interface{}
+
+type RESPONSEArguments struct {
+	Response string
+}
 
 type SETArguments struct {
 	Key   string

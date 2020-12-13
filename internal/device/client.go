@@ -35,6 +35,7 @@ func NewClient(conn net.Conn, ID uint64, outbound chan<- common.Command, inbound
 
 func (c *Client) receiveCommandsLoop() {
 	reader := bufio.NewReader(c.conn)
+	writer := bufio.NewWriter(c.conn)
 	tp := textproto.NewReader(reader)
 	log.Print("DEBUG starting receiveCommandsLoop")
 	for {
@@ -43,6 +44,12 @@ func (c *Client) receiveCommandsLoop() {
 			if cmd.CMD == common.KILL {
 				log.Printf("Server sent KILL cmd to connected device %d", c.ID)
 				break
+			} else if cmd.CMD == common.RESPONSE {
+				v, ok := cmd.Arguments.(common.RESPONSEArguments)
+				if !ok {
+					log.Panicf("invalid response arguments %v", cmd.Arguments)
+				}
+				writer.WriteString(v.Response)
 			}
 		default:
 			//Continue receiveReadings loop

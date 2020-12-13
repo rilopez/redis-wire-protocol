@@ -19,7 +19,7 @@ func TestDeserialize(t *testing.T) {
 	}{
 		{
 			name:    "SET",
-			args:    args{serializedCMD: "SET foo 1"},
+			args:    args{serializedCMD: " SET foo 1"},
 			wantCMD: common.SET,
 			wantCMDArgs: common.SETArguments{
 				Key:   "foo",
@@ -29,7 +29,7 @@ func TestDeserialize(t *testing.T) {
 		},
 		{
 			name:    "SET with enclosing quotes ",
-			args:    args{serializedCMD: "SET full-name 'John Doe' "},
+			args:    args{serializedCMD: `SET   full-name "John Doe" `},
 			wantCMD: common.SET,
 			wantCMDArgs: common.SETArguments{
 				Key:   "full-name",
@@ -39,7 +39,7 @@ func TestDeserialize(t *testing.T) {
 		},
 		{
 			name:    "GET",
-			args:    args{serializedCMD: "GET foo"},
+			args:    args{serializedCMD: " GET     foo"},
 			wantCMD: common.GET,
 			wantCMDArgs: common.GETArguments{
 				Key: "foo",
@@ -48,7 +48,7 @@ func TestDeserialize(t *testing.T) {
 		},
 		{
 			name:    "DEL",
-			args:    args{serializedCMD: "DEL foo"},
+			args:    args{serializedCMD: "DEL   foo"},
 			wantCMD: common.DEL,
 			wantCMDArgs: common.DELArguments{
 				Keys: []string{"foo"},

@@ -65,54 +65,9 @@ func imeiFromPath(path, prefix string) (uint64, error) {
 	return uint64(imei), err
 }
 
-func (d *httpd) readingsHandler(w http.ResponseWriter, req *http.Request) {
-	if req.Method != http.MethodGet {
-		log.Printf("[httpd] %s method not allowed ", req.Method)
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-
-	imei, err := imeiFromPath(req.URL.Path, "/readings/")
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	lastReadingEpoch, lastReading, exists := d.core.deviceLastReading(imei)
-	if !exists {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	reading := &timeStampedReading{
-		TimestampEpoch: lastReadingEpoch,
-		Reading:        lastReading,
-	}
-	d.writeJSONResponse(w, *reading)
-}
-
-func (d *httpd) statusHandler(w http.ResponseWriter, req *http.Request) {
-	if req.Method != http.MethodGet {
-		log.Printf("[httpd] %s method not allowed ", req.Method)
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-
-	imei, err := imeiFromPath(req.URL.Path, "/status/")
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	_, exists := d.core.deviceByIMEI(imei)
-	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(fmt.Sprintf("{\"online\":%v}", exists)))
-}
-
 func (d *httpd) run() {
 	http.HandleFunc("/stats", d.statsHandler)
-	http.HandleFunc("/readings/", d.readingsHandler)
-	http.HandleFunc("/status/", d.statusHandler)
+
 	httpAddress := fmt.Sprintf(":%d", d.port)
 	http.ListenAndServe(httpAddress, d.logRequest(http.DefaultServeMux))
 	log.Printf("[httpd] started at %s", httpAddress)

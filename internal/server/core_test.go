@@ -45,7 +45,7 @@ func TestCore_HandleReading(t *testing.T) {
 	core.clients[expectedClientIMEI] = dev
 
 	//Exercise
-	core.handleReading(expectedClientIMEI, expectedPayload[:])
+	core.handleSET(expectedClientIMEI, expectedPayload[:])
 
 	if dev.lastReadingEpoch != expectedLastReadingEpoch {
 		t.Errorf("expected LastReadingEpoch to equal %d but got %d",
@@ -68,7 +68,7 @@ func TestCore_HandleReading_UnknownClient(t *testing.T) {
 	//Exercise
 
 	unknownIMEI := uint64(123)
-	err := core.handleReading(unknownIMEI, []byte{1, 2})
+	err := core.handleSET(unknownIMEI, []byte{1, 2})
 	if err == nil {
 		t.Errorf("expected get an error for unknown client %d", unknownIMEI)
 	}
@@ -82,14 +82,14 @@ func TestCore_HandleReading_InvalidPayload(t *testing.T) {
 	core.clients[expectedClientIMEI] = dev
 
 	//Exercise bound check panic
-	errBoundCheckPanic := core.handleReading(expectedClientIMEI, []byte{1, 2})
+	errBoundCheckPanic := core.handleSET(expectedClientIMEI, []byte{1, 2})
 	if errBoundCheckPanic == nil {
 		t.Errorf("expected get an error for unknown client %d", expectedClientIMEI)
 	}
 
 	invalidPayload := device.NewPayload(9999999, 9999999, 9999999, 9999999, 9999999)
 
-	errInvalidPayload := core.handleReading(expectedClientIMEI, invalidPayload[:])
+	errInvalidPayload := core.handleSET(expectedClientIMEI, invalidPayload[:])
 	if errInvalidPayload == nil {
 		t.Errorf("expected get an error for unknown client %d", expectedClientIMEI)
 	}
@@ -104,7 +104,7 @@ func TestCore_Register(t *testing.T) {
 		t.Errorf("unexpected error %v", err)
 	}
 
-	_, exists := core.deviceByIMEI(expectedIMEI)
+	_, exists := core.clientByID(expectedIMEI)
 	if !exists {
 		t.Errorf("clients map should contain an entry for IMEI: %d", expectedIMEI)
 	}
@@ -186,7 +186,7 @@ func ExampleCore_handleReading() {
 	}
 	//Exercise
 
-	core.handleReading(expectedIMEI, expectedPayload[:])
+	core.handleSET(expectedIMEI, expectedPayload[:])
 
 	// Output: 1596397680000000000,448324242329542,9.127577,12545.598440,-51.432503,-42.963412,31.805817
 }
@@ -213,7 +213,7 @@ func BenchmarkCore_HandleReading(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		fmt.Printf("reading %d of %d readings", i, b.N)
-		err := core.handleReading(expectedClientIMEI, expectedPayload[:])
+		err := core.handleSET(expectedClientIMEI, expectedPayload[:])
 		if err != nil {
 			b.Fail()
 		}

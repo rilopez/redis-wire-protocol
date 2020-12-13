@@ -2,7 +2,6 @@ package device
 
 import (
 	"bufio"
-	"fmt"
 	"github.com/google/uuid"
 	"github.com/rilopez/redis-wire-protocol/internal/resp"
 	"log"
@@ -27,7 +26,7 @@ type Client struct {
 func NewClient(conn net.Conn, outbound chan<- common.Command, now func() time.Time) (*Client, error) {
 
 	client := &Client{
-		ID: uuid.New(),
+		ID:       uuid.New(),
 		conn:     conn,
 		outbound: outbound,
 		now:      now,
@@ -42,23 +41,6 @@ func (c *Client) logout() error {
 		ID:     common.LOGOUT,
 		Sender: c.ID,
 	}
-	return nil
-}
-
-func (c *Client) receiveLoginMessage() error {
-	log.Println("DEBUG: receiveLoginMessage start")
-	var loginMsg [15]byte
-	n, err := c.conn.Read(loginMsg[:])
-	if err != nil || n < 15 {
-		return fmt.Errorf("ERR trying to read IMEI, bytes read: %d, err: %v", n, err)
-	}
-
-	imei, err := decodeIMEI(loginMsg[:])
-	if err != nil {
-		return fmt.Errorf("ERR decoding IMEI bytes %v ", err)
-	}
-	c.ID = imei
-
 	return nil
 }
 
@@ -84,21 +66,30 @@ func (c *Client) receiveCommandsLoop() {
 			c.logout()
 			break
 		}
-		cmd := deserializeCommand(line)
+		cmd, err := c.deserializeCommand(line)
+		if err != nil {
+			if err != nil {
+				log.Printf("ERR  readed command text line :%s , err: %v", err)
+				c.logout()
+				break
+			}
+		}
 		c.outbound <- cmd
 	}
 	log.Println("DEBUG receiveCommandsLoop exit")
 }
 
-func (c *Client)  deserializeCommand(serializedCMD string) common.Command {
-	cmd, data := resp.Deserialize(serializedCMD)
-	return common.Command{
-		ID:     cmd,
-		Sender: c.ID
-		Body:   data,
+func (c *Client) deserializeCommand(serializedCMD string) (common.Command, error) {
+	cmd, data, err := resp.Deserialize(serializedCMD)
+	if err != nil {
+		return common.Command{}, err
 	}
+	return common.Command{
+		ID:        cmd,
+		Sender:    c.ID,
+		Arguments: data,
+	}, nil
 }
-
 
 func (c *Client) Read(wg *sync.WaitGroup) {
 	log.Println("DEBUG starting client Read")
@@ -110,7 +101,6 @@ func (c *Client) Read(wg *sync.WaitGroup) {
 		log.Println("DEBUG client connection closed")
 		wg.Done()
 	}()
-
 
 	c.inbound = make(chan common.Command)
 

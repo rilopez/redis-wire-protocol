@@ -84,7 +84,7 @@ func TestHttpd_ReadingHandler(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	dev, _ := core.deviceByIMEI(expectedIMEI)
+	dev, _ := core.clientByID(expectedIMEI)
 	dev.lastReading = reading
 
 	url := fmt.Sprintf("/readings/%d", expectedIMEI)

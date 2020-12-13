@@ -1,7 +1,6 @@
 package device
 
 import (
-	"bytes"
 	"net"
 	"sync"
 	"testing"
@@ -47,14 +46,6 @@ func TestRead(t *testing.T) {
 		t.Fatal("Timeout")
 	case cmd := <-outbound:
 		switch cmd.ID {
-		case common.READING:
-			if cmd.Sender != expectedIMEI {
-				t.Errorf("expected cmd.Sender to be %d got %d", expectedIMEI, cmd.Sender)
-			}
-			if !bytes.Equal(cmd.Body, readingBytes[:]) {
-				t.Errorf("expected cmd.Body to be %v got %v", readingBytes, cmd.Body)
-			}
-
 		case common.LOGOUT:
 			if cmd.Sender != expectedIMEI {
 				t.Errorf("expected client device with IMEI %v was not sent to logout channel  got %v", expectedIMEI, cmd.Sender)

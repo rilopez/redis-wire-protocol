@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"github.com/google/uuid"
 	"log"
 	"net"
 	"sync"
@@ -13,7 +14,7 @@ import (
 
 // core maintains a map of clients and communication channels
 type core struct {
-	clients          map[uint64]*connectedClient
+	clients          map[uuid.UUID]*connectedClient
 	commands         chan common.Command
 	port             uint
 	serverMaxClients uint
@@ -30,7 +31,7 @@ type connectedClient struct {
 // NewCore allocates a Core struct
 func newCore(now func() time.Time, port uint, serverMaxClients uint) *core {
 	return &core{
-		clients:          make(map[uint64]*connectedClient),
+		clients:          make(map[uuid.UUID]*connectedClient),
 		commands:         make(chan common.Command),
 		now:              now,
 		port:             port,
@@ -106,8 +107,8 @@ func (c *core) run(wg *sync.WaitGroup) {
 				err = c.register(cmd.Sender, cmd.CallbackChannel)
 			case common.LOGOUT:
 				err = c.deregister(cmd.Sender)
-			case common.READING:
-				err = c.handleReading(cmd.Sender, cmd.Body)
+			case common.SET:
+				err = c.handleSET(cmd.Sender, cmd.Arguments)
 			default:
 				err = fmt.Errorf("Unknown Command %d", cmd.ID)
 			}
@@ -120,60 +121,39 @@ func (c *core) run(wg *sync.WaitGroup) {
 
 }
 
-func (c *core) deviceLastReading(imei uint64) (lastReadingEpoch int64, lastReading *device.Reading, exists bool) {
-	dev, exists := c.deviceByIMEI(imei)
-	if !exists {
-		return
-	}
-	//a little copying is better than a little sharing
-	lastReading = &device.Reading{
-		Temperature:  dev.lastReading.Temperature,
-		Altitude:     dev.lastReading.Altitude,
-		Latitude:     dev.lastReading.Latitude,
-		Longitude:    dev.lastReading.Longitude,
-		BatteryLevel: dev.lastReading.BatteryLevel,
-	}
-
-	lastReadingEpoch = dev.lastReadingEpoch
-	return
-}
-
-func (c *core) deviceByIMEI(imei uint64) (*connectedClient, bool) {
+func (c *core) clientByID(ID uuid.UUID) (*connectedClient, bool) {
 	c.mux.Lock()
-	dev, exists := c.clients[imei]
+	dev, exists := c.clients[ID]
 	c.mux.Unlock()
 
 	return dev, exists
 }
 
-func (c *core) handleReading(imei uint64, payload []byte) (err error) {
+func (c *core) handleSET(ID uuid.UUID, payload interface{}) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("ERR recovering from hadleReading panic %v", r)
 		}
 	}()
 
+	log.Printf("payload  %v", payload)
 	reading := &device.Reading{}
-	if !reading.Decode(payload) {
-		return fmt.Errorf("ERR decoding payload from device with IMEI %d", imei)
-	}
-
-	dev, exists := c.deviceByIMEI(imei)
+	client, exists := c.clientByID(ID)
 	if !exists {
-		return fmt.Errorf("Client with IMEI %d does not exists", imei)
+		return fmt.Errorf("Client with IMEI %d does not exists", ID)
 	}
-	dev.lastReadingEpoch = c.now().UnixNano()
-	dev.lastReading = reading
+	client.lastReadingEpoch = c.now().UnixNano()
+	client.lastReading = reading
 
-	fmt.Println(formatReadingOutput(imei, dev.lastReadingEpoch, dev.lastReading))
+	fmt.Println(formatReadingOutput(ID, client.lastReadingEpoch, client.lastReading))
 
 	return nil
 }
 
-func formatReadingOutput(imei uint64, lastReadingEpoch int64, lastReading *device.Reading) string {
+func formatReadingOutput(ID uuid.UUID, lastReadingEpoch int64, lastReading *device.Reading) string {
 	return fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f",
 		lastReadingEpoch,
-		imei,
+		ID,
 		lastReading.Temperature,
 		lastReading.Altitude,
 		lastReading.Latitude,
@@ -182,37 +162,37 @@ func formatReadingOutput(imei uint64, lastReadingEpoch int64, lastReading *devic
 
 }
 
-func (c *core) register(imei uint64, callbackChannel chan common.Command) error {
+func (c *core) register(ID uuid.UUID, callbackChannel chan common.Command) error {
 
-	_, exists := c.deviceByIMEI(imei)
+	_, exists := c.clientByID(ID)
 
 	if exists {
-		log.Printf("DEBUG trying to kill connected dup device %v", imei)
+		log.Printf("DEBUG trying to kill connected dup device %v", ID)
 		callbackChannel <- common.Command{ID: common.KILL}
-		log.Printf("DEBUG KILL cmd sent  %v", imei)
-		return fmt.Errorf("imei %d already logged in", imei)
+		log.Printf("DEBUG KILL cmd sent  %v", ID)
+		return fmt.Errorf("imei %d already logged in", ID)
 	}
 	c.mux.Lock()
-	c.clients[imei] = &connectedClient{
+	c.clients[ID] = &connectedClient{
 		callbackChannel: callbackChannel,
 	}
 	c.mux.Unlock()
 	callbackChannel <- common.Command{ID: common.WELCOME}
-	log.Printf("device with IMEI %d connected succesfuly", imei)
+	log.Printf("device with IMEI %d connected succesfuly", ID)
 
 	return nil
 }
 
-func (c *core) deregister(imei uint64) error {
-	log.Printf("DEBUG trying to deregister device with IMEI %d ", imei)
-	_, exists := c.deviceByIMEI(imei)
+func (c *core) deregister(ID uuid.UUID) error {
+	log.Printf("DEBUG trying to deregister device with IMEI %d ", ID)
+	_, exists := c.clientByID(ID)
 	if !exists {
-		return fmt.Errorf("ERR imei %d is not logged in", imei)
+		return fmt.Errorf("ERR imei %d is not logged in", ID)
 	}
 
 	c.mux.Lock()
-	delete(c.clients, imei)
+	delete(c.clients, ID)
 	c.mux.Unlock()
-	log.Printf("device with IMEI %d desconnected succesfuly", imei)
+	log.Printf("device with IMEI %d desconnected succesfuly", ID)
 	return nil
 }

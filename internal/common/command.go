@@ -25,6 +25,8 @@ const (
 
 	// DEL https://redis.io/commands/del
 	DEL
+	// UNKNOWN ...
+	UNKNOWN
 )
 
 // Command is used to send data between clients and server core
@@ -32,5 +34,20 @@ type Command struct {
 	ID              CommandID
 	Sender          uuid.UUID
 	CallbackChannel chan Command
-	Body            []byte
+	Arguments       CommandArguments
+}
+
+type CommandArguments interface{}
+
+type SETArguments struct {
+	Key   string
+	Value string
+}
+
+type GETArguments struct {
+	Key string
+}
+
+type DELArguments struct {
+	Keys []string
 }

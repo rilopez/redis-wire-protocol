@@ -1,6 +1,9 @@
 package resp
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func TestArray(t *testing.T) {
 	type args struct {
@@ -42,4 +45,10 @@ func TestArray(t *testing.T) {
 			}
 		})
 	}
+}
+
+func ExampleArray() {
+
+	fmt.Print(Array([]interface{}{"GET", "foo"}))
+	// Output: *2\r\n$3\r\nGET\r\n$3\r\nfoo\r\n
 }

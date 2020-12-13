@@ -40,34 +40,34 @@ func TestDeserialize(t *testing.T) {
 			},
 			wantErr: false,
 		},
-		//{
-		//	name:    "GET",
-		//	args:    args{serializedCMD: " GET     foo"},
-		//	wantCMD: common.GET,
-		//	wantCMDArgs: common.GETArguments{
-		//		Key: "foo",
-		//	},
-		//	wantErr: false,
-		//},
-		//{
-		//	name:    "DEL",
-		//	args:    args{serializedCMD: "DEL   foo"},
-		//	wantCMD: common.DEL,
-		//	wantCMDArgs: common.DELArguments{
-		//		Keys: []string{"foo"},
-		//	},
-		//	wantErr: false,
-		//},
-		//
-		//{
-		//	name:    "DEL with multiple keys",
-		//	args:    args{serializedCMD: "*\r\nDEL key1 key2 key3"},
-		//	wantCMD: common.DEL,
-		//	wantCMDArgs: common.DELArguments{
-		//		Keys: []string{"key1", "key2", "key3"},
-		//	},
-		//	wantErr: false,
-		//},
+		{
+			name:    "GET",
+			args:    args{serializedCMD: "*2\r\n$3\r\nGET\r\n$3\r\nfoo\r\n"},
+			wantCMD: common.GET,
+			wantCMDArgs: common.GETArguments{
+				Key: "foo",
+			},
+			wantErr: false,
+		},
+		{
+			name:    "DEL",
+			args:    args{serializedCMD: "*2\r\n$3\r\nDEL\r\n$3\r\nfoo\r\n"},
+			wantCMD: common.DEL,
+			wantCMDArgs: common.DELArguments{
+				Keys: []string{"foo"},
+			},
+			wantErr: false,
+		},
+
+		{
+			name:    "DEL with multiple keys",
+			args:    args{serializedCMD: "*4\r\n$3\r\nDEL\r\n$4\r\nkey1\r\n$4\r\nkey2\r\n$7\r\nlastkey\r\n"},
+			wantCMD: common.DEL,
+			wantCMDArgs: common.DELArguments{
+				Keys: []string{"key1", "key2", "lastkey"},
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

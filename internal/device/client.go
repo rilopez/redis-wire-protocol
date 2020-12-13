@@ -50,7 +50,7 @@ func (c *Client) receiveCommandsLoop() {
 		cmd, err := c.readCommand(tp)
 		if err != nil {
 			if err != nil {
-				log.Printf("ERR  readed command text line :%s , err: %v", err)
+				log.Printf("ERR  readCommand :%v ", err)
 				break
 			}
 		}

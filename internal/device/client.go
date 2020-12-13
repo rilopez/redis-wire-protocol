@@ -47,19 +47,7 @@ func (c *Client) receiveCommandsLoop() {
 		default:
 			//Continue receiveReadings loop
 		}
-		//TODO support multiline commands
-		/*
-			All Redis commands are sent as arrays of bulk strings.
-			For example, the command “SET mykey ‘my value’” would be written and sent as:
-			*3\r\n$3\r\nSET\r\n$5\r\nmykey\r\n$8\r\nmy value\r\n
-		*/
-
-		line, err := tp.ReadLine()
-		if err != nil {
-			log.Printf("ERR during reading %v", err)
-			break
-		}
-		cmd, err := c.deserializeCommand(line)
+		cmd, err := c.readCommand(tp)
 		if err != nil {
 			if err != nil {
 				log.Printf("ERR  readed command text line :%s , err: %v", err)
@@ -71,10 +59,8 @@ func (c *Client) receiveCommandsLoop() {
 	log.Println("DEBUG receiveCommandsLoop exit")
 }
 
-func (c *Client) deserializeCommand(serializedCMD string) (common.Command, error) {
-	log.Printf("DEBUG: deserializing: %s", serializedCMD)
-
-	cmd, data, err := resp.Deserialize(serializedCMD)
+func (c *Client) readCommand(reader *textproto.Reader) (common.Command, error) {
+	cmd, data, err := resp.DeserializeCMD(reader)
 	if err != nil {
 		return common.Command{}, err
 	}

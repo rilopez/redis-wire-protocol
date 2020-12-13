@@ -50,12 +50,5 @@ func TestRead(t *testing.T) {
 			if cmd.ClientID != expectedIMEI {
 				t.Errorf("expected client device with IMEI %v was not sent to logout channel  got %v", expectedIMEI, cmd.ClientID)
 			}
-
-		case common.LOGIN:
-			if cmd.ClientID != expectedIMEI {
-				t.Errorf("expecterd client device with IMEI %v was not sent to login channel  got %v", expectedIMEI, cmd.ClientID)
-			}
-
-		}
 	}
 }

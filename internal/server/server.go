@@ -219,7 +219,7 @@ func (s *server) handleGET(client *connectedClient, args common.CommandArguments
 	value, exists := s.db[getArgs.Key]
 	s.mux.Unlock()
 	if !exists {
-		return "-ERR unknown key", fmt.Errorf("invalid key %s", getArgs.Key)
+		return resp.BulkString(nil), fmt.Errorf("invalid key %s", getArgs.Key)
 	}
 	return resp.BulkString(value), nil
 }

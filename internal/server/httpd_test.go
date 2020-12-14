@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/rilopez/redis-wire-protocol/internal/client"
 	"github.com/rilopez/redis-wire-protocol/internal/common"
-	"github.com/rilopez/redis-wire-protocol/internal/device"
 )
 
 func TestHttpd_StatsHandler(t *testing.T) {
@@ -75,8 +75,8 @@ func TestHttpd_ReadingHandler(t *testing.T) {
 	core := newServer(common.FrozenInTime, uint(1337), 2)
 	httpd := newHttpd(core, 80)
 	expectedIMEI := uint64(448324242329542)
-	reading := &device.Reading{}
-	randomReadingBytes := device.CreateRandReadingBytes()
+	reading := &client.Reading{}
+	randomReadingBytes := client.CreateRandReadingBytes()
 	reading.Decode(randomReadingBytes[:])
 
 	callBackChannel := make(chan common.Command, 1)

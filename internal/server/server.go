@@ -2,8 +2,8 @@ package server
 
 import (
 	"fmt"
+	"github.com/rilopez/redis-wire-protocol/internal/client"
 	"github.com/rilopez/redis-wire-protocol/internal/common"
-	"github.com/rilopez/redis-wire-protocol/internal/device"
 	"github.com/rilopez/redis-wire-protocol/internal/resp"
 	"log"
 	"net"
@@ -99,7 +99,7 @@ func (s *server) listenConnections(wg *sync.WaitGroup) {
 
 }
 
-func (s *server) registerClient(conn net.Conn) (*device.Client, error) {
+func (s *server) registerClient(conn net.Conn) (*client.Worker, error) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	numActiveClients := uint(len(s.clients))
@@ -113,7 +113,7 @@ func (s *server) registerClient(conn net.Conn) (*device.Client, error) {
 	}
 
 	callbackChan := make(chan common.Command)
-	client, err := device.NewClient(
+	client, err := client.NewWorker(
 		conn,
 		s.nextClientId,
 		s.commands,
@@ -154,7 +154,7 @@ func (s *server) run(wg *sync.WaitGroup) {
 			client.lastCMDEpoch = s.now().UnixNano()
 
 			switch cmd.CMD {
-			case common.DEREGISTER:
+			case common.INTERNAL_DEREGISTER:
 				err = s.deregister(client.ID)
 			case common.SET:
 				response, err = s.handleSET(cmd.Arguments)
@@ -162,6 +162,11 @@ func (s *server) run(wg *sync.WaitGroup) {
 				response, err = s.handleGET(client, cmd.Arguments)
 			case common.DEL:
 				response, err = s.handleDEL(client, cmd.Arguments)
+				//TODO support INFO
+				//TODO support CLIENT
+				//TODO support CLIENT LIST
+				//TODO support PING
+				//TODO support ECHO
 			default:
 				err = fmt.Errorf("unknown Command %d", cmd.CMD)
 			}
@@ -190,6 +195,7 @@ func (s *server) clientByID(ID uint64) (*connectedClient, bool) {
 	return dev, exists
 }
 
+//TODO test & bechmark handleSET
 func (s *server) handleSET(args common.CommandArguments) (response string, err error) {
 	setArgs, ok := args.(common.SETArguments)
 	if !ok {
@@ -205,6 +211,7 @@ func (s *server) handleSET(args common.CommandArguments) (response string, err e
 	return resp.SimpleString("OK"), nil
 }
 
+//TODO test & bechmark handleGET
 func (s *server) handleGET(client *connectedClient, args common.CommandArguments) (response string, err error) {
 	getArgs, ok := args.(common.GETArguments)
 	if !ok {
@@ -212,8 +219,6 @@ func (s *server) handleGET(client *connectedClient, args common.CommandArguments
 	}
 
 	log.Printf("GET with args  %v", getArgs)
-
-	//TODO get  key value from memory
 
 	s.mux.Lock()
 	value, exists := s.db[getArgs.Key]
@@ -224,6 +229,7 @@ func (s *server) handleGET(client *connectedClient, args common.CommandArguments
 	return resp.BulkString(value), nil
 }
 
+//TODO test & bechmark handleDEL
 func (s *server) handleDEL(client *connectedClient, args common.CommandArguments) (response string, err error) {
 	delArgs, ok := args.(common.DELArguments)
 	if !ok {
@@ -235,7 +241,7 @@ func (s *server) handleDEL(client *connectedClient, args common.CommandArguments
 	for _, k := range delArgs.Keys {
 		_, exists := s.db[k]
 		if exists {
-			opStatus = 1 //del cmd is succesfull if deletes at least one key
+			opStatus = 1 //del cmd is successful if deletes at least one key
 		}
 		delete(s.db, k)
 	}

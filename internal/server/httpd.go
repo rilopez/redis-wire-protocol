@@ -9,13 +9,15 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/rilopez/redis-wire-protocol/internal/device"
+	"github.com/rilopez/redis-wire-protocol/internal/client"
 )
 
 type httpd struct {
 	core *server
 	port uint
 }
+
+//TODO move to INFO redis command
 type stats struct {
 	NumConnectedClients int               `json:"numConnectedClients"`
 	NumCPU              int               `json:"numCpu"`
@@ -26,7 +28,7 @@ type stats struct {
 
 type timeStampedReading struct {
 	TimestampEpoch int64           `json:"timestampEpoch"`
-	Reading        *device.Reading `json:"reading"`
+	Reading        *client.Reading `json:"reading"`
 }
 
 func newHttpd(core *server, port uint) *httpd {

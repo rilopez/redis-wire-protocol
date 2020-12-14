@@ -9,10 +9,10 @@ client.  3 channels are used to communicate the client data to the server server
 	commands chan common.Command
 	    used to by client connections to send cmd & data to server server.
 	    currently the server implements SET, GET & DEL commands
-	Logouts  chan *device.Client
+	Logouts  chan *client.Client
 		used to send clients with closed or timeout connections. The reciever
 		should remove the record from the connected clients map
-	Logins   chan *device.Client
+	Logins   chan *client.Client
 		after a new connection is created this channel is used
 		to send a newly created  client so the receiver can store
 		its reference in the connected clients map

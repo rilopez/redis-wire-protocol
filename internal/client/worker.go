@@ -1,4 +1,4 @@
-package device
+package client
 
 import (
 	"bufio"
@@ -13,8 +13,8 @@ import (
 	"github.com/rilopez/redis-wire-protocol/internal/common"
 )
 
-// Client is used to handle a client connection
-type Client struct {
+// Worker is used to handle a client connection
+type Worker struct {
 	ID         uint64
 	conn       net.Conn
 	toServer   chan<- common.Command
@@ -22,9 +22,9 @@ type Client struct {
 	now        func() time.Time
 }
 
-// NewClient allocates a Client
-func NewClient(conn net.Conn, ID uint64, outbound chan<- common.Command, inbound chan common.Command, now func() time.Time) (*Client, error) {
-	client := &Client{
+// NewWorker allocates a Worker
+func NewWorker(conn net.Conn, ID uint64, outbound chan<- common.Command, inbound chan common.Command, now func() time.Time) (*Worker, error) {
+	client := &Worker{
 		ID:         ID,
 		conn:       conn,
 		toServer:   outbound,
@@ -34,7 +34,7 @@ func NewClient(conn net.Conn, ID uint64, outbound chan<- common.Command, inbound
 	return client, nil
 }
 
-func (c *Client) receiveCommandsLoop() {
+func (c *Worker) receiveCommandsLoop() {
 	reader := bufio.NewReader(c.conn)
 	writer := bufio.NewWriter(c.conn)
 	tp := textproto.NewReader(reader)
@@ -66,7 +66,7 @@ func (c *Client) receiveCommandsLoop() {
 	log.Println("DEBUG receiveCommandsLoop exit")
 }
 
-func (c *Client) readCommand(reader *textproto.Reader) (common.Command, error) {
+func (c *Worker) readCommand(reader *textproto.Reader) (common.Command, error) {
 	cmd, data, err := resp.DeserializeCMD(reader)
 	if err != nil {
 		return common.Command{}, err
@@ -79,7 +79,7 @@ func (c *Client) readCommand(reader *textproto.Reader) (common.Command, error) {
 	}, nil
 }
 
-func (c *Client) Read(wg *sync.WaitGroup) {
+func (c *Worker) Read(wg *sync.WaitGroup) {
 	log.Println("DEBUG starting client Read")
 	defer func() {
 		err := c.conn.Close()
@@ -88,7 +88,7 @@ func (c *Client) Read(wg *sync.WaitGroup) {
 		}
 		log.Println("DEBUG client connection closed")
 		c.toServer <- common.Command{
-			CMD:      common.DEREGISTER,
+			CMD:      common.INTERNAL_DEREGISTER,
 			ClientID: c.ID,
 		}
 		wg.Done()

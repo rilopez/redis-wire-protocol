@@ -160,12 +160,14 @@ func (s *server) run(wg *sync.WaitGroup) {
 				response, err = s.handleSET(cmd.Arguments)
 			case common.GET:
 				response, err = s.handleGET(client, cmd.Arguments)
+			case common.DEL:
+				response, err = s.handleDEL(client, cmd.Arguments)
 			default:
 				err = fmt.Errorf("unknown Command %d", cmd.CMD)
 			}
 
 			if len(response) != 0 {
-				client.callbackChannel <- common.Command{
+				cmd.CallbackChannel <- common.Command{
 					CMD: common.RESPONSE,
 					Arguments: common.RESPONSEArguments{
 						Response: response,
@@ -219,25 +221,28 @@ func (s *server) handleGET(client *connectedClient, args common.CommandArguments
 	if !exists {
 		return "-ERR unknown key", fmt.Errorf("invalid key %s", getArgs.Key)
 	}
-	return resp.BulkString(*value), nil
+	return resp.BulkString(value), nil
 }
 
-func (s *server) handleDEL(args common.CommandArguments) (err error) {
+func (s *server) handleDEL(client *connectedClient, args common.CommandArguments) (response string, err error) {
 	delArgs, ok := args.(common.DELArguments)
 	if !ok {
-		return fmt.Errorf("invalid GET argments %v", args)
+		return "-ERR", fmt.Errorf("invalid GET argments %v", delArgs)
 	}
 
 	s.mux.Lock()
+	opStatus := 0
 	for _, k := range delArgs.Keys {
+		_, exists := s.db[k]
+		if exists {
+			opStatus = 1 //del cmd is succesfull if deletes at least one key
+		}
 		delete(s.db, k)
 	}
 	s.mux.Unlock()
 	log.Printf("DEL with args  %v", delArgs)
 
-	//TODO get  key value from memory
-
-	return nil
+	return resp.Integer(opStatus), nil
 }
 
 func (s *server) deregister(clientID uint64) error {

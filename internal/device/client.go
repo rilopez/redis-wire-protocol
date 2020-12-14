@@ -3,6 +3,7 @@ package device
 import (
 	"bufio"
 	"github.com/rilopez/redis-wire-protocol/internal/resp"
+	"io"
 	"log"
 	"net"
 	"net/textproto"
@@ -39,29 +40,28 @@ func (c *Client) receiveCommandsLoop() {
 	tp := textproto.NewReader(reader)
 	log.Print("DEBUG starting receiveCommandsLoop")
 	for {
-		select {
-		case cmd := <-c.fromServer:
-			if cmd.CMD == common.KILL {
-				log.Printf("Server sent KILL cmd to connected device %d", c.ID)
-				break
-			} else if cmd.CMD == common.RESPONSE {
-				v, ok := cmd.Arguments.(common.RESPONSEArguments)
-				if !ok {
-					log.Panicf("invalid response arguments %v", cmd.Arguments)
-				}
-				writer.WriteString(v.Response)
-			}
-		default:
-			//Continue receiveReadings loop
-		}
 		cmd, err := c.readCommand(tp)
 		if err != nil {
 			if err != nil {
-				log.Printf("ERR  readCommand :%v ", err)
+				if err == io.EOF {
+					log.Printf("EOF :%v ", err)
+				} else {
+					log.Printf("ERR  readCommand :%v ", err)
+				}
+
 				break
 			}
 		}
 		c.toServer <- cmd
+		cmdResponse := <-c.fromServer
+		if cmdResponse.CMD == common.RESPONSE {
+			v, ok := cmdResponse.Arguments.(common.RESPONSEArguments)
+			if !ok {
+				log.Panicf("invalid response arguments %v", cmdResponse.Arguments)
+			}
+			writer.WriteString(v.Response)
+			writer.Flush()
+		}
 	}
 	log.Println("DEBUG receiveCommandsLoop exit")
 }
@@ -72,9 +72,10 @@ func (c *Client) readCommand(reader *textproto.Reader) (common.Command, error) {
 		return common.Command{}, err
 	}
 	return common.Command{
-		CMD:       cmd,
-		ClientID:  c.ID,
-		Arguments: data,
+		CMD:             cmd,
+		ClientID:        c.ID,
+		Arguments:       data,
+		CallbackChannel: c.fromServer,
 	}, nil
 }
 

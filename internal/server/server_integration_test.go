@@ -9,7 +9,8 @@ import (
 
 func TestStart(t *testing.T) {
 	ready := make(chan bool, 1)
-	go Start(6379, 100000, ready)
+	quit := make(chan bool, 1)
+	go Start(6379, 100000, ready, quit)
 
 	<-ready
 	fmt.Println("server is ready")

@@ -15,11 +15,11 @@ import (
 
 // Start creates a tcp connection listener to accept connections at `port`
 //TODO send a quit channel
-func Start(port uint, serverMaxClients uint, ready chan bool) {
+func Start(port uint, serverMaxClients uint, ready chan bool, quit chan bool) {
 	log.Printf("starting server demons  with \n  - port:%d\n - -serverMaxClients: %d\n",
 		port, serverMaxClients)
 
-	core := newServer(time.Now, port, serverMaxClients, ready)
+	core := newServer(time.Now, port, serverMaxClients, ready, quit)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -51,12 +51,13 @@ type connectedClient struct {
 }
 
 // NewCore allocates a Core struct
-func newServer(now func() time.Time, port uint, serverMaxClients uint, ready chan bool) *server {
+func newServer(now func() time.Time, port uint, serverMaxClients uint, ready chan bool, quit chan bool) *server {
 	return &server{
 		clients:          make(map[uint64]*connectedClient),
 		db:               make(map[string]*string),
 		commands:         make(chan common.Command),
 		ready:            ready,
+		quit:             quit,
 		now:              now,
 		port:             port,
 		nextClientId:     1,
@@ -71,6 +72,7 @@ func (s *server) numConnectedClients() int {
 	return numActiveClients
 }
 
+//TODO  accept a quit chan
 func (s *server) listenConnections(wg *sync.WaitGroup) {
 	address := fmt.Sprintf(":%d", s.port)
 	ln, err := net.Listen("tcp", address)
@@ -145,55 +147,74 @@ func (s *server) run(wg *sync.WaitGroup) {
 	wg.Add(1)
 	defer wg.Done()
 
+	//TODO pass quit channel to listenConnections
 	go s.listenConnections(wg)
 
 	for {
 		var err error
 		var response = ""
+		var closing = false
 		select {
-		case cmd := <-s.commands:
-			client, exists := s.clientByID(cmd.ClientID)
-			if !exists {
-				err = fmt.Errorf("client ID  %d does not exists", cmd.ClientID)
-			}
-			client.lastCMD = cmd.CMD
-			client.lastCMDEpoch = s.now().UnixNano()
-
-			switch cmd.CMD {
-
-			case common.SET:
-				response, err = s.handleSET(cmd.Arguments)
-			case common.GET:
-				response, err = s.handleGET(client, cmd.Arguments)
-			case common.DEL:
-				response, err = s.handleDEL(client, cmd.Arguments)
-			case common.INFO:
-				response, err = s.handleINFO(client, cmd.Arguments)
-				//TODO support INFO
-				//TODO support CLIENT
-				//TODO support CLIENT LIST
-				//TODO support PING
-				//TODO support ECHO
-
-			case common.INTERNAL_DEREGISTER:
-				err = s.deregister(client.ID)
-			default:
-				err = fmt.Errorf("unknown Command %d", cmd.CMD)
-			}
-
-			if len(response) != 0 {
-				cmd.CallbackChannel <- common.Command{
-					CMD: common.RESPONSE,
-					Arguments: common.RESPONSEArguments{
-						Response: response,
-					},
-				}
-			}
-			if err != nil {
-				log.Printf("ERR %v", err)
-			}
+		case <-s.quit:
+			log.Print("got quit signal trying to shutdown connected clients")
+			s.shutdown()
+			closing = true
+		default:
 		}
 
+		select {
+		case cmd := <-s.commands:
+			s.handleCMD(cmd, err, response)
+		default:
+		}
+
+		if closing && s.numConnectedClients() == 0 {
+			log.Print("no more clients connected, exit now")
+			break
+		}
+	}
+}
+
+func (s *server) handleCMD(cmd common.Command, err error, response string) {
+	client, exists := s.clientByID(cmd.ClientID)
+	if !exists {
+		err = fmt.Errorf("client ID  %d does not exists", cmd.ClientID)
+	}
+	client.lastCMD = cmd.CMD
+	client.lastCMDEpoch = s.now().UnixNano()
+
+	switch cmd.CMD {
+
+	case common.SET:
+		response, err = s.handleSET(cmd.Arguments)
+	case common.GET:
+		response, err = s.handleGET(client, cmd.Arguments)
+	case common.DEL:
+		response, err = s.handleDEL(client, cmd.Arguments)
+	case common.INFO:
+		response, err = s.handleINFO(client, cmd.Arguments)
+		//TODO support INFO
+		//TODO support CLIENT
+		//TODO support CLIENT LIST
+		//TODO support PING
+		//TODO support ECHO
+
+	case common.INTERNAL_DEREGISTER:
+		err = s.deregister(client.ID)
+	default:
+		err = fmt.Errorf("unknown Command %d", cmd.CMD)
+	}
+
+	if len(response) != 0 {
+		cmd.CallbackChannel <- common.Command{
+			CMD: common.RESPONSE,
+			Arguments: common.RESPONSEArguments{
+				Response: response,
+			},
+		}
+	}
+	if err != nil {
+		log.Printf("ERR %v", err)
 	}
 }
 
@@ -281,4 +302,9 @@ func (s *server) handleINFO(c *connectedClient, arguments common.CommandArgument
 	sb.WriteString(fmt.Sprintf("NumGoroutine:%d\n", runtime.NumGoroutine()))
 	str := sb.String()
 	return resp.BulkString(&str), nil
+}
+
+func (s *server) shutdown() {
+	//TODO send true to stop-connections channel
+	//TODO send a kill cmd to all clients
 }

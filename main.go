@@ -16,6 +16,8 @@ func main() {
 	serverMaxClients := flag.Uint("max-clients", 100000, "Max number of clients accepted by the server ")
 
 	flag.Parse()
+	ready := make(chan bool, 1)
 
-	server.Start(*serverPort, *serverMaxClients)
+	server.Start(*serverPort, *serverMaxClients, ready)
+
 }

@@ -15,11 +15,11 @@ import (
 
 // Start creates a tcp connection listener to accept connections at `port`
 //TODO send a quit channel
-func Start(port uint, serverMaxClients uint) {
+func Start(port uint, serverMaxClients uint, ready chan bool) {
 	log.Printf("starting server demons  with \n  - port:%d\n - -serverMaxClients: %d\n",
 		port, serverMaxClients)
 
-	core := newServer(time.Now, port, serverMaxClients)
+	core := newServer(time.Now, port, serverMaxClients, ready)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -34,6 +34,8 @@ type server struct {
 	clients          map[uint64]*connectedClient
 	db               map[string]*string
 	commands         chan common.Command
+	ready            chan bool
+	quit             chan bool
 	port             uint
 	nextClientId     uint64
 	serverMaxClients uint
@@ -49,11 +51,12 @@ type connectedClient struct {
 }
 
 // NewCore allocates a Core struct
-func newServer(now func() time.Time, port uint, serverMaxClients uint) *server {
+func newServer(now func() time.Time, port uint, serverMaxClients uint, ready chan bool) *server {
 	return &server{
 		clients:          make(map[uint64]*connectedClient),
 		db:               make(map[string]*string),
 		commands:         make(chan common.Command),
+		ready:            ready,
 		now:              now,
 		port:             port,
 		nextClientId:     1,
@@ -80,6 +83,7 @@ func (s *server) listenConnections(wg *sync.WaitGroup) {
 	}()
 
 	log.Printf("Server started listening for connections at %s ", address)
+	s.ready <- true
 	for {
 		conn, err := ln.Accept()
 		if err != nil {

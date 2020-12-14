@@ -2,14 +2,17 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"github.com/go-redis/redis/v8"
 	"testing"
 )
 
 func TestStart(t *testing.T) {
-	go Start(6379, 100000)
-	//TODO add a defer with `quit <- true`
+	ready := make(chan bool, 1)
+	go Start(6379, 100000, ready)
 
+	<-ready
+	fmt.Println("server is ready")
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password set

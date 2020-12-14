@@ -15,6 +15,4 @@ func TestNewCore(t *testing.T) {
 	}
 }
 
-//TODO create integration test with for Start func
-
 //TODO create benchmark test with for Start func

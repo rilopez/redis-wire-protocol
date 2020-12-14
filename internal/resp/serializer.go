@@ -35,3 +35,7 @@ func BulkString(str *string) string {
 func SimpleString(str string) string {
 	return fmt.Sprintf("+%s\r\n", str)
 }
+
+func Error(err error) string {
+	return fmt.Sprintf("-%s\r\n", err)
+}

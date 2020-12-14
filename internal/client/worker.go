@@ -38,7 +38,6 @@ func (c *Worker) receiveCommandsLoop() {
 	reader := bufio.NewReader(c.conn)
 	writer := bufio.NewWriter(c.conn)
 	tp := textproto.NewReader(reader)
-	log.Print("DEBUG starting receiveCommandsLoop")
 	for {
 		cmd, err := c.readCommand(tp)
 		if err != nil {
@@ -80,7 +79,6 @@ func (c *Worker) readCommand(reader *textproto.Reader) (common.Command, error) {
 }
 
 func (c *Worker) Read(wg *sync.WaitGroup) {
-	log.Println("DEBUG starting client Read")
 	defer func() {
 		err := c.conn.Close()
 		if err != nil {

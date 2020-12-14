@@ -14,7 +14,6 @@ import (
 )
 
 // Start creates a tcp connection listener to accept connections at `port`
-//TODO send a quit channel
 func Start(port uint, serverMaxClients uint, ready chan bool, quit chan bool) {
 	log.Printf("starting server demons  with \n  - port:%d\n - -serverMaxClients: %d\n",
 		port, serverMaxClients)
@@ -72,8 +71,8 @@ func (s *server) numConnectedClients() int {
 	return numActiveClients
 }
 
-//TODO  accept a quit chan
-func (s *server) listenConnections(wg *sync.WaitGroup) {
+//TODO accept a quit chan
+func (s *server) listenConnections(wg *sync.WaitGroup, quit chan bool) {
 	address := fmt.Sprintf(":%d", s.port)
 	ln, err := net.Listen("tcp", address)
 	if err != nil {
@@ -87,12 +86,18 @@ func (s *server) listenConnections(wg *sync.WaitGroup) {
 	log.Printf("Server started listening for connections at %s ", address)
 	s.ready <- true
 	for {
+		select {
+		case <-quit:
+			log.Print("listenConnections got a quit signal ")
+			break
+		default:
+		}
+
 		conn, err := ln.Accept()
 		if err != nil {
 			log.Printf("Failed to accept connection: %v", err)
 			continue
 		}
-		log.Print("DEBUG: new client connection")
 		client, err := s.registerClient(conn)
 		if err != nil {
 			conn.Close()
@@ -104,6 +109,7 @@ func (s *server) listenConnections(wg *sync.WaitGroup) {
 		wg.Add(1)
 		go client.Read(wg)
 	}
+	log.Print("stoped connections listening loop")
 
 }
 
@@ -148,7 +154,8 @@ func (s *server) run(wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	//TODO pass quit channel to listenConnections
-	go s.listenConnections(wg)
+	stopListening := make(chan bool)
+	go s.listenConnections(wg, stopListening)
 
 	for {
 		var err error
@@ -157,6 +164,7 @@ func (s *server) run(wg *sync.WaitGroup) {
 		select {
 		case <-s.quit:
 			log.Print("got quit signal trying to shutdown connected clients")
+			stopListening <- true
 			s.shutdown()
 			closing = true
 		default:
@@ -204,7 +212,10 @@ func (s *server) handleCMD(cmd common.Command, err error, response string) {
 	default:
 		err = fmt.Errorf("unknown Command %d", cmd.CMD)
 	}
-
+	if err != nil {
+		log.Printf("ERR %v", err)
+		response = resp.Error(err)
+	}
 	if len(response) != 0 {
 		cmd.CallbackChannel <- common.Command{
 			CMD: common.RESPONSE,
@@ -213,9 +224,7 @@ func (s *server) handleCMD(cmd common.Command, err error, response string) {
 			},
 		}
 	}
-	if err != nil {
-		log.Printf("ERR %v", err)
-	}
+
 }
 
 func (s *server) clientByID(ID uint64) (*connectedClient, bool) {
@@ -230,11 +239,9 @@ func (s *server) clientByID(ID uint64) (*connectedClient, bool) {
 func (s *server) handleSET(args common.CommandArguments) (response string, err error) {
 	setArgs, ok := args.(common.SETArguments)
 	if !ok {
-		return "", fmt.Errorf("invalid SET argments %v", args)
+		return "-ERR", fmt.Errorf("invalid SET argments %v", args)
 	}
-
 	log.Printf("SET with args  %v", setArgs)
-
 	s.mux.Lock()
 	s.db[setArgs.Key] = &setArgs.Value
 	s.mux.Unlock()
@@ -248,9 +255,7 @@ func (s *server) handleGET(client *connectedClient, args common.CommandArguments
 	if !ok {
 		return "-ERR", fmt.Errorf("invalid GET argments %v", args)
 	}
-
 	log.Printf("GET with args  %v", getArgs)
-
 	s.mux.Lock()
 	value, exists := s.db[getArgs.Key]
 	s.mux.Unlock()

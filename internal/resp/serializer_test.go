@@ -1,7 +1,7 @@
 package resp
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 )
 
@@ -47,8 +47,13 @@ func TestArray(t *testing.T) {
 	}
 }
 
-func ExampleArray() {
+func TestError(t *testing.T) {
+	ErrDummy := errors.New("Dummy Error")
 
-	fmt.Print(Array([]interface{}{"GET", "foo"}))
-	// Output: *2\r\n$3\r\nGET\r\n$3\r\nfoo\r\n
+	gotErr := Error(ErrDummy)
+
+	wantErr := "-Dummy Error\r\n"
+	if gotErr != wantErr {
+		t.Errorf("Error(): %v , want: %v", gotErr, wantErr)
+	}
 }

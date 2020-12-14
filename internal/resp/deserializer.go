@@ -3,7 +3,6 @@ package resp
 import (
 	"fmt"
 	"github.com/rilopez/redis-wire-protocol/internal/common"
-	"log"
 	"net/textproto"
 	"strconv"
 	"strings"
@@ -47,7 +46,7 @@ func DeserializeCMD(reader *textproto.Reader) (common.CommandID, common.CommandA
 		}
 		bulkStringArray = append(bulkStringArray, str)
 	}
-	log.Printf("bulkStringArray : %v ", bulkStringArray)
+
 	if bulkStringArray == nil && len(bulkStringArray) == 0 {
 		return common.UNKNOWN, nil, fmt.Errorf("no command read")
 	}

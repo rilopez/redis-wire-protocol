@@ -7,21 +7,23 @@ import (
 	"github.com/rilopez/redis-wire-protocol/internal/resp"
 	"log"
 	"net"
+	"runtime"
+	"strings"
 	"sync"
 	"time"
 )
 
 // Start creates a tcp connection listener to accept connections at `port`
-func Start(port uint, httpPort uint, serverMaxClients uint) {
-	log.Printf("starting server demons  with \n  - port:%d\n - httpPort:%d\n -serverMaxClients: %d\n",
-		port, httpPort, serverMaxClients)
+//TODO send a quit channel
+func Start(port uint, serverMaxClients uint) {
+	log.Printf("starting server demons  with \n  - port:%d\n - -serverMaxClients: %d\n",
+		port, serverMaxClients)
 
 	core := newServer(time.Now, port, serverMaxClients)
-	httpd := newHttpd(core, httpPort)
+
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go core.run(&wg)
-	go httpd.run()
 
 	wg.Wait()
 
@@ -154,19 +156,23 @@ func (s *server) run(wg *sync.WaitGroup) {
 			client.lastCMDEpoch = s.now().UnixNano()
 
 			switch cmd.CMD {
-			case common.INTERNAL_DEREGISTER:
-				err = s.deregister(client.ID)
+
 			case common.SET:
 				response, err = s.handleSET(cmd.Arguments)
 			case common.GET:
 				response, err = s.handleGET(client, cmd.Arguments)
 			case common.DEL:
 				response, err = s.handleDEL(client, cmd.Arguments)
+			case common.INFO:
+				response, err = s.handleINFO(client, cmd.Arguments)
 				//TODO support INFO
 				//TODO support CLIENT
 				//TODO support CLIENT LIST
 				//TODO support PING
 				//TODO support ECHO
+
+			case common.INTERNAL_DEREGISTER:
+				err = s.deregister(client.ID)
 			default:
 				err = fmt.Errorf("unknown Command %d", cmd.CMD)
 			}
@@ -258,4 +264,17 @@ func (s *server) deregister(clientID uint64) error {
 	s.mux.Unlock()
 	log.Printf("client with ID %d desconnected succesfuly", clientID)
 	return nil
+}
+
+func (s *server) handleINFO(c *connectedClient, arguments common.CommandArguments) (string, error) {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("NumConnectedClients:%d\n", s.numConnectedClients()))
+	sb.WriteString(fmt.Sprintf("NumCPU:%d\n", runtime.NumCPU()))
+	sb.WriteString(fmt.Sprintf("NumGoroutine:%d\n", runtime.NumGoroutine()))
+
+	var memStats runtime.MemStats
+	runtime.ReadMemStats(&memStats)
+	sb.WriteString(fmt.Sprintf("NumGoroutine:%d\n", runtime.NumGoroutine()))
+	str := sb.String()
+	return resp.BulkString(&str), nil
 }

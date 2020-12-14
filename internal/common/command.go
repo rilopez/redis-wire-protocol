@@ -16,7 +16,8 @@ const (
 
 	// DEL https://redis.io/commands/del
 	DEL
-
+	// INFO https://redis.io/commands/info
+	INFO
 	// INTERNAL_DEREGISTER used to indicate the client to log itself out
 	INTERNAL_DEREGISTER
 	// KILL used to indicate a client to terminate its reading loop

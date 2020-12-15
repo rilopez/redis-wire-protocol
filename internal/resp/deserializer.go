@@ -66,6 +66,8 @@ func DeserializeCMD(reader *textproto.Reader) (common.CommandID, common.CommandA
 	case "DEL":
 		cmd = common.DEL
 		cmdArgs, err = parseDELArguments(args)
+	case "INFO":
+		cmd = common.INFO
 	default:
 		return common.UNKNOWN, bulkStringArray, nil
 	}

@@ -18,6 +18,7 @@ func main() {
 	flag.Parse()
 	ready := make(chan bool, 1)
 	quit := make(chan bool, 1)
-	server.Start(*serverPort, *serverMaxClients, ready, quit)
+	events := make(chan string, 1)
+	server.Start(*serverPort, *serverMaxClients, ready, quit, events)
 
 }

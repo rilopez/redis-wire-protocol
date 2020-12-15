@@ -13,6 +13,14 @@ import (
 	"time"
 )
 
+type serverState int
+
+const (
+	serverStateListening serverState = iota
+	serverStateShuttingDown
+	serverStateBooting
+)
+
 const (
 	EventAfterDisconnect = "AFTER_DISCONNECT"
 )
@@ -45,6 +53,7 @@ type server struct {
 	serverMaxClients uint
 	now              func() time.Time
 	mux              sync.Mutex
+	state            serverState
 }
 
 type connectedClient struct {
@@ -67,6 +76,7 @@ func newServer(now func() time.Time, port uint, serverMaxClients uint, ready cha
 		port:             port,
 		nextClientId:     1,
 		serverMaxClients: serverMaxClients,
+		state:            serverStateBooting,
 	}
 }
 
@@ -156,21 +166,24 @@ func (s *server) registerClient(conn net.Conn) (*client.Worker, error) {
 // Run handles channels inbound communications from connected clients
 func (s *server) run(wg *sync.WaitGroup) {
 	wg.Add(1)
-	defer wg.Done()
 
+	s.setState(serverStateListening)
 	stopListening := make(chan bool)
+	defer func() {
+		wg.Done()
+		close(stopListening)
+	}()
+
 	go s.listenConnections(wg, stopListening)
 
 	for {
 		var err error
 		var response = ""
-		var closing = false
 		select {
 		case <-s.quit:
 			log.Print("got quit signal trying to shutdown connected clients")
 			stopListening <- true
 			s.shutdown()
-			closing = true
 		default:
 		}
 
@@ -180,11 +193,23 @@ func (s *server) run(wg *sync.WaitGroup) {
 		default:
 		}
 
-		if closing && s.numConnectedClients() == 0 {
+		if s.getState() == serverStateShuttingDown && s.numConnectedClients() == 0 {
 			log.Print("no more clients connected, exit now")
 			break
 		}
 	}
+}
+
+func (s *server) setState(state serverState) {
+	s.mux.Lock()
+	s.state = state
+	s.mux.Unlock()
+}
+func (s *server) getState() serverState {
+	s.mux.Lock()
+	state := s.state
+	s.mux.Unlock()
+	return state
 }
 
 func (s *server) handleCMD(cmd common.Command, err error, response string) {
@@ -205,7 +230,7 @@ func (s *server) handleCMD(cmd common.Command, err error, response string) {
 		response, err = s.handleDEL(cmd.Arguments)
 	case common.INFO:
 		response, err = s.handleINFO()
-		//TODO support INFO
+
 		//TODO support CLIENT
 		//TODO support CLIENT LIST
 		//TODO support PING
@@ -305,12 +330,31 @@ func (s *server) handleINFO() (string, error) {
 
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
-	sb.WriteString(fmt.Sprintf("NumGoroutine:%d\n", runtime.NumGoroutine()))
+	sb.WriteString("=== MemStats === \n")
+	sb.WriteString(fmt.Sprintf("Alloc:%d\n", memStats.Alloc))
+	sb.WriteString(fmt.Sprintf("TotalAlloc:%d\n", memStats.TotalAlloc))
+	sb.WriteString(fmt.Sprintf("Sys:%d\n", memStats.Sys))
+	sb.WriteString(fmt.Sprintf("Mallocs:%d\n", memStats.Mallocs))
+	sb.WriteString(fmt.Sprintf("Frees:%d\n", memStats.Frees))
+	sb.WriteString(fmt.Sprintf("Live Objects(Mallocs - Frees):%d\n", memStats.Mallocs-memStats.Frees))
+
+	sb.WriteString(fmt.Sprintf("PauseTotalNs:%d\n", memStats.PauseTotalNs))
+	sb.WriteString(fmt.Sprintf("NumGC:%d\n", memStats.NumGC))
+
 	str := sb.String()
 	return resp.BulkString(&str), nil
 }
 
 func (s *server) shutdown() {
-	//TODO send true to stop-connections channel
-	//TODO send a kill cmd to all clients
+	//log.Print("Shutting down server")
+	//s.setState(serverStateShuttingDown)
+	//s.mux.Lock()
+	//log.Printf("trying to kill %d connected clients", len(s.clients) )
+	//for id, c := range s.clients {
+	//	log.Printf("sending kill signal to client with ID :%d", id)
+	//	c.callbackChannel <- common.Command{
+	//		CMD: common.KILL,
+	//	}
+	//}
+	//s.mux.Unlock()
 }

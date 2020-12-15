@@ -61,7 +61,6 @@ func (c *Worker) receiveCommandsLoop() {
 			writer.Flush()
 		}
 	}
-	log.Println("DEBUG receiveCommandsLoop exit")
 }
 
 func (c *Worker) readCommand(reader *textproto.Reader) (common.Command, error) {
@@ -81,7 +80,7 @@ func (c *Worker) Read(wg *sync.WaitGroup) {
 		if err != nil {
 			log.Printf("ERR trying to close the connection %v", err)
 		}
-		log.Println("DEBUG client connection closed")
+
 		c.toServer <- common.Command{
 			CMD:      common.INTERNAL_DEREGISTER,
 			ClientID: c.ID,
@@ -90,6 +89,4 @@ func (c *Worker) Read(wg *sync.WaitGroup) {
 	}()
 
 	c.receiveCommandsLoop()
-	log.Print("DEBUG client Read exit")
-
 }

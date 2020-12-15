@@ -47,7 +47,6 @@ func (c *Worker) receiveCommandsLoop() {
 				} else {
 					log.Printf("ERR  readCommand :%v ", err)
 				}
-
 				break
 			}
 		}
@@ -67,15 +66,13 @@ func (c *Worker) receiveCommandsLoop() {
 
 func (c *Worker) readCommand(reader *textproto.Reader) (common.Command, error) {
 	cmd, data, err := resp.DeserializeCMD(reader)
-	if err != nil {
-		return common.Command{}, err
-	}
+
 	return common.Command{
 		CMD:             cmd,
 		ClientID:        c.ID,
 		Arguments:       data,
 		CallbackChannel: c.fromServer,
-	}, nil
+	}, err
 }
 
 func (c *Worker) Read(wg *sync.WaitGroup) {

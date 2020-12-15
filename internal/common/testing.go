@@ -20,3 +20,9 @@ func FrozenInTime() time.Time {
 	//Dragon splashdown historic event time
 	return time.Date(2020, 8, 2, 14, 48, 0, 0, loc)
 }
+
+func ExpectNoError(t *testing.T, err error) {
+	if err != nil {
+		t.Errorf("expected no error , got %v", err)
+	}
+}

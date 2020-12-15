@@ -1,9 +1,8 @@
 package server
 
 import (
-	"testing"
-
 	"github.com/rilopez/redis-wire-protocol/internal/common"
+	"testing"
 )
 
 func TestNewCore(t *testing.T) {
@@ -14,5 +13,3 @@ func TestNewCore(t *testing.T) {
 		t.Errorf("expected len(server.client) to equal %d but got %d", expectedClientsLen, actualClientsLen)
 	}
 }
-
-//TODO create benchmark test with for Start func

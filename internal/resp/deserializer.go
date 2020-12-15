@@ -55,18 +55,19 @@ func DeserializeCMD(reader *textproto.Reader) (common.CommandID, common.CommandA
 	var cmd common.CommandID
 	var cmdArgs common.CommandArguments
 
+	args := bulkStringArray[1:]
 	switch strings.ToUpper(cmdStr) {
 	case "GET":
 		cmd = common.GET
-		cmdArgs, err = parseGETArguments(bulkStringArray[1:])
+		cmdArgs, err = parseGETArguments(args)
 	case "SET":
 		cmd = common.SET
-		cmdArgs, err = parseSETArguments(bulkStringArray[1:])
+		cmdArgs, err = parseSETArguments(args)
 	case "DEL":
 		cmd = common.DEL
-		cmdArgs, err = parseDELArguments(bulkStringArray[1:])
+		cmdArgs, err = parseDELArguments(args)
 	default:
-		return common.UNKNOWN, nil, fmt.Errorf("unsupported command %s", cmdStr)
+		return common.UNKNOWN, bulkStringArray, nil
 	}
 
 	return cmd, cmdArgs, err

@@ -71,7 +71,6 @@ func (s *server) numConnectedClients() int {
 	return numActiveClients
 }
 
-//TODO accept a quit chan
 func (s *server) listenConnections(wg *sync.WaitGroup, quit chan bool) {
 	address := fmt.Sprintf(":%d", s.port)
 	ln, err := net.Listen("tcp", address)
@@ -153,7 +152,6 @@ func (s *server) run(wg *sync.WaitGroup) {
 	wg.Add(1)
 	defer wg.Done()
 
-	//TODO pass quit channel to listenConnections
 	stopListening := make(chan bool)
 	go s.listenConnections(wg, stopListening)
 
@@ -196,21 +194,23 @@ func (s *server) handleCMD(cmd common.Command, err error, response string) {
 	case common.SET:
 		response, err = s.handleSET(cmd.Arguments)
 	case common.GET:
-		response, err = s.handleGET(client, cmd.Arguments)
+		response, err = s.handleGET(cmd.Arguments)
 	case common.DEL:
-		response, err = s.handleDEL(client, cmd.Arguments)
+		response, err = s.handleDEL(cmd.Arguments)
 	case common.INFO:
-		response, err = s.handleINFO(client, cmd.Arguments)
+		response, err = s.handleINFO()
 		//TODO support INFO
 		//TODO support CLIENT
 		//TODO support CLIENT LIST
 		//TODO support PING
 		//TODO support ECHO
 
+	case common.UNKNOWN:
+		err = fmt.Errorf("unsupported command %v", cmd.Arguments)
 	case common.INTERNAL_DEREGISTER:
 		err = s.deregister(client.ID)
 	default:
-		err = fmt.Errorf("unknown Command %d", cmd.CMD)
+		err = fmt.Errorf("invalid server command %d", cmd.CMD)
 	}
 	if err != nil {
 		log.Printf("ERR %v", err)
@@ -235,7 +235,6 @@ func (s *server) clientByID(ID uint64) (*connectedClient, bool) {
 	return dev, exists
 }
 
-//TODO test & bechmark handleSET
 func (s *server) handleSET(args common.CommandArguments) (response string, err error) {
 	setArgs, ok := args.(common.SETArguments)
 	if !ok {
@@ -250,23 +249,21 @@ func (s *server) handleSET(args common.CommandArguments) (response string, err e
 }
 
 //TODO test & bechmark handleGET
-func (s *server) handleGET(client *connectedClient, args common.CommandArguments) (response string, err error) {
+func (s *server) handleGET(args common.CommandArguments) (response string, err error) {
 	getArgs, ok := args.(common.GETArguments)
 	if !ok {
 		return "-ERR", fmt.Errorf("invalid GET argments %v", args)
 	}
 	log.Printf("GET with args  %v", getArgs)
 	s.mux.Lock()
-	value, exists := s.db[getArgs.Key]
+	value, _ := s.db[getArgs.Key]
 	s.mux.Unlock()
-	if !exists {
-		return resp.BulkString(nil), fmt.Errorf("invalid key %s", getArgs.Key)
-	}
+
 	return resp.BulkString(value), nil
 }
 
 //TODO test & bechmark handleDEL
-func (s *server) handleDEL(client *connectedClient, args common.CommandArguments) (response string, err error) {
+func (s *server) handleDEL(args common.CommandArguments) (response string, err error) {
 	delArgs, ok := args.(common.DELArguments)
 	if !ok {
 		return "-ERR", fmt.Errorf("invalid GET argments %v", delArgs)
@@ -296,7 +293,7 @@ func (s *server) deregister(clientID uint64) error {
 	return nil
 }
 
-func (s *server) handleINFO(c *connectedClient, arguments common.CommandArguments) (string, error) {
+func (s *server) handleINFO() (string, error) {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("NumConnectedClients:%d\n", s.numConnectedClients()))
 	sb.WriteString(fmt.Sprintf("NumCPU:%d\n", runtime.NumCPU()))

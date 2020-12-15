@@ -22,7 +22,8 @@ const (
 )
 
 const (
-	EventAfterDisconnect = "AFTER_DISCONNECT"
+	EventAfterDisconnect    = "AFTER_DISCONNECT"
+	EventSuccessfulShutdown = "SUCCESSFUL_SHUTDOWN"
 )
 
 // Start creates a tcp connection listener to accept connections at `port`

@@ -161,6 +161,7 @@ func TestMaxClients(t *testing.T) {
 }
 
 func TestServerLifecycle(t *testing.T) {
+	t.Skip()
 	t.Parallel()
 	ready := make(chan bool, 1)
 	quit := make(chan bool, 1)

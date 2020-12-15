@@ -15,6 +15,8 @@ import (
 
 type serverState int
 
+// used to time out the connection accept loop. default 2 secs will timeout accepting connections and check the quit channel
+const idleTimeout = 2 * time.Second
 const (
 	serverStateListening serverState = iota
 	serverStateShuttingDown
@@ -88,27 +90,33 @@ func (s *server) numConnectedClients() int {
 	return numActiveClients
 }
 
-func (s *server) listenConnections(wg *sync.WaitGroup, quit chan bool) {
-	address := fmt.Sprintf(":%d", s.port)
-	ln, err := net.Listen("tcp", address)
+func (s *server) listenConnections(wg *sync.WaitGroup, quitListening chan bool) {
+	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf(":%d", s.port))
 	if err != nil {
-		log.Fatalf("ERR Failed to start tcp listener at %s,  %v", address, err)
+		log.Fatal(err)
+	}
+
+	ln, err := net.ListenTCP("tcp", addr)
+
+	if err != nil {
+		log.Fatalf("ERR Failed to start tcp listener at %s,  %v", fmt.Sprintf(":%d", s.port), err)
 	}
 	defer func() {
 		ln.Close()
 		wg.Done()
 	}()
 
-	log.Printf("Server started listening for connections at %s ", address)
+	log.Printf("Server started listening for connections at %s ", fmt.Sprintf(":%d", s.port))
 	s.ready <- true
 	for {
 		select {
-		case <-quit:
+		case <-quitListening:
 			log.Print("listenConnections got a quit signal ")
 			break
 		default:
 		}
 
+		ln.SetDeadline(time.Now().Add(idleTimeout))
 		conn, err := ln.Accept()
 		if err != nil {
 			log.Printf("Failed to accept connection: %v", err)

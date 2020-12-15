@@ -161,11 +161,11 @@ func TestMaxClients(t *testing.T) {
 }
 
 func TestServerLifecycle(t *testing.T) {
-	t.Skip()
+	t.Parallel()
 	ready := make(chan bool, 1)
 	quit := make(chan bool, 1)
 	events := make(chan string, 1)
-	port := uint(10_003)
+	port := uint(10_005)
 	server := newServer(time.Now, port, 2, ready, quit, events)
 	var wg sync.WaitGroup
 	wg.Add(1)

@@ -22,7 +22,15 @@ func FrozenInTime() time.Time {
 }
 
 func ExpectNoError(t *testing.T, err error) {
+	t.Helper()
 	if err != nil {
 		t.Errorf("expected no error , got %v", err)
+	}
+}
+
+func AssertEquals(t *testing.T, got interface{}, want interface{}) {
+	t.Helper()
+	if got != want {
+		t.Errorf("expecting %s , got %s", got, want)
 	}
 }

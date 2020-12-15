@@ -13,12 +13,16 @@ import (
 	"time"
 )
 
+const (
+	EventAfterDisconnect = "AFTER_DISCONNECT"
+)
+
 // Start creates a tcp connection listener to accept connections at `port`
-func Start(port uint, serverMaxClients uint, ready chan bool, quit chan bool) {
+func Start(port uint, serverMaxClients uint, ready chan<- bool, quit <-chan bool, events chan<- string) {
 	log.Printf("starting server demons  with \n  - port:%d\n - -serverMaxClients: %d\n",
 		port, serverMaxClients)
 
-	core := newServer(time.Now, port, serverMaxClients, ready, quit)
+	core := newServer(time.Now, port, serverMaxClients, ready, quit, events)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -33,8 +37,9 @@ type server struct {
 	clients          map[uint64]*connectedClient
 	db               map[string]*string
 	commands         chan common.Command
-	ready            chan bool
-	quit             chan bool
+	ready            chan<- bool
+	events           chan<- string
+	quit             <-chan bool
 	port             uint
 	nextClientId     uint64
 	serverMaxClients uint
@@ -50,11 +55,12 @@ type connectedClient struct {
 }
 
 // NewCore allocates a Core struct
-func newServer(now func() time.Time, port uint, serverMaxClients uint, ready chan bool, quit chan bool) *server {
+func newServer(now func() time.Time, port uint, serverMaxClients uint, ready chan<- bool, quit <-chan bool, events chan<- string) *server {
 	return &server{
 		clients:          make(map[uint64]*connectedClient),
 		db:               make(map[string]*string),
 		commands:         make(chan common.Command),
+		events:           events,
 		ready:            ready,
 		quit:             quit,
 		now:              now,
@@ -208,7 +214,7 @@ func (s *server) handleCMD(cmd common.Command, err error, response string) {
 	case common.UNKNOWN:
 		err = fmt.Errorf("unsupported command %v", cmd.Arguments)
 	case common.INTERNAL_DEREGISTER:
-		err = s.deregister(client.ID)
+		err = s.disconnect(client.ID)
 	default:
 		err = fmt.Errorf("invalid server command %d", cmd.CMD)
 	}
@@ -224,7 +230,6 @@ func (s *server) handleCMD(cmd common.Command, err error, response string) {
 			},
 		}
 	}
-
 }
 
 func (s *server) clientByID(ID uint64) (*connectedClient, bool) {
@@ -248,7 +253,6 @@ func (s *server) handleSET(args common.CommandArguments) (response string, err e
 	return resp.SimpleString("OK"), nil
 }
 
-//TODO test & bechmark handleGET
 func (s *server) handleGET(args common.CommandArguments) (response string, err error) {
 	getArgs, ok := args.(common.GETArguments)
 	if !ok {
@@ -262,7 +266,6 @@ func (s *server) handleGET(args common.CommandArguments) (response string, err e
 	return resp.BulkString(value), nil
 }
 
-//TODO test & bechmark handleDEL
 func (s *server) handleDEL(args common.CommandArguments) (response string, err error) {
 	delArgs, ok := args.(common.DELArguments)
 	if !ok {
@@ -284,12 +287,13 @@ func (s *server) handleDEL(args common.CommandArguments) (response string, err e
 	return resp.Integer(opStatus), nil
 }
 
-func (s *server) deregister(clientID uint64) error {
-	log.Printf("DEBUG trying to deregister client with ID %d ", clientID)
+func (s *server) disconnect(clientID uint64) error {
 	s.mux.Lock()
 	delete(s.clients, clientID)
 	s.mux.Unlock()
 	log.Printf("client with ID %d desconnected succesfuly", clientID)
+
+	s.events <- EventAfterDisconnect
 	return nil
 }
 

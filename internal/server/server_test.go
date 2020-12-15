@@ -6,7 +6,7 @@ import (
 )
 
 func TestNewCore(t *testing.T) {
-	core := newServer(common.FrozenInTime, uint(1337), 2, nil, nil)
+	core := newServer(common.FrozenInTime, uint(1337), 2, nil, nil, nil)
 	expectedClientsLen := 0
 	actualClientsLen := core.numConnectedClients()
 	if actualClientsLen != expectedClientsLen {

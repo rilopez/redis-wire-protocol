@@ -48,7 +48,7 @@ func TestArray(t *testing.T) {
 }
 
 func TestError(t *testing.T) {
-	ErrDummy := errors.New("Dummy Error")
+	ErrDummy := errors.New("dummy Error")
 
 	gotErr := Error(ErrDummy)
 

@@ -15,3 +15,5 @@
 # vendor/
 
 .idea
+/server.log
+/server-output.txt

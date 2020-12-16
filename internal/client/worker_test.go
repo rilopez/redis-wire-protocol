@@ -9,13 +9,13 @@ import (
 func TestNewWorker(t *testing.T) {
 	conn := &net.TCPConn{}
 	quit := make(<-chan bool)
-	outbound := make(chan<- common.Command)
-	inbound := make(chan common.Command)
-	worker, err := NewWorker(conn, 123, outbound, inbound, common.FrozenInTime, quit)
+	request := make(chan<- common.Command)
+	response := make(chan string)
+	worker, err := NewWorker(conn, 123, request, response, common.FrozenInTime, quit)
 	common.ExpectNoError(t, err)
 	common.AssertEquals(t, worker.ID, uint64(123))
 	common.AssertEquals(t, worker.quit, quit)
-	common.AssertEquals(t, worker.request, outbound)
-	common.AssertEquals(t, worker.response, inbound)
+	common.AssertEquals(t, worker.request, request)
+	common.AssertEquals(t, worker.response, response)
 	common.AssertEquals(t, worker.now().String(), common.FrozenInTime().String())
 }

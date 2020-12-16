@@ -22,14 +22,14 @@ type Worker struct {
 	ID       uint64
 	conn     net.Conn
 	request  chan<- common.Command
-	response chan common.Command
+	response chan string
 	quit     <-chan bool
 	now      func() time.Time
 }
 
 // NewWorker allocates a Worker
 //TODO change inbound param to <-chan common.Command
-func NewWorker(conn net.Conn, ID uint64, request chan<- common.Command, response chan common.Command, now func() time.Time, quit <-chan bool) (*Worker, error) {
+func NewWorker(conn net.Conn, ID uint64, request chan<- common.Command, response chan string, now func() time.Time, quit <-chan bool) (*Worker, error) {
 	if conn == nil {
 		return nil, fmt.Errorf("conn can not be nil")
 	}
@@ -84,18 +84,9 @@ func (c *Worker) receiveCommandsLoop() {
 			}
 		} else {
 			c.request <- cmd
-			cmdResponse := <-c.response
-			if cmdResponse.CMD == common.RESPONSE {
-				v, ok := cmdResponse.Arguments.(common.RESPONSEArguments)
-				if !ok {
-					log.Panicf("invalid response arguments %v", cmdResponse.Arguments)
-				}
-				writer.WriteString(v.Response)
-				writer.Flush()
-			} else {
-				log.Printf("ERR [worker] unsupported cmd from server %v", cmdResponse)
-				return
-			}
+			writer.WriteString(<-c.response)
+			writer.Flush()
+
 		}
 	}
 }

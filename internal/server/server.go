@@ -47,7 +47,7 @@ func Start(port uint, serverMaxClients uint, ready chan<- bool, quit <-chan bool
 type server struct {
 	clients          map[uint64]*connectedClient
 	db               map[string]*string
-	commands         chan common.Command
+	requests         chan common.Command
 	ready            chan<- bool
 	events           chan<- string
 	quit             <-chan bool
@@ -60,11 +60,11 @@ type server struct {
 }
 
 type connectedClient struct {
-	ID              uint64
-	callbackChannel chan common.Command
-	lastCMDEpoch    int64
-	lastCMD         common.CommandID
-	quit            chan<- bool
+	ID           uint64
+	response     chan string
+	lastCMDEpoch int64
+	lastCMD      common.CommandID
+	quit         chan<- bool
 }
 
 // NewCore allocates a Core struct
@@ -72,7 +72,7 @@ func newServer(now func() time.Time, port uint, serverMaxClients uint, ready cha
 	return &server{
 		clients:          make(map[uint64]*connectedClient),
 		db:               make(map[string]*string),
-		commands:         make(chan common.Command),
+		requests:         make(chan common.Command),
 		events:           events,
 		ready:            ready,
 		quit:             quit,
@@ -158,13 +158,13 @@ func (s *server) registerClient(conn net.Conn) (*client.Worker, error) {
 	}
 
 	//TODO  try to delete callback chan
-	callbackChan := make(chan common.Command)
+	response := make(chan string)
 	quit := make(chan bool)
 	client, err := client.NewWorker(
 		conn,
 		s.nextClientId,
-		s.commands,
-		callbackChan,
+		s.requests,
+		response,
 		s.now,
 		quit,
 	)
@@ -173,9 +173,9 @@ func (s *server) registerClient(conn net.Conn) (*client.Worker, error) {
 	}
 
 	s.clients[client.ID] = &connectedClient{
-		ID:              client.ID,
-		callbackChannel: callbackChan,
-		quit:            quit,
+		ID:       client.ID,
+		response: response,
+		quit:     quit,
 	}
 	s.nextClientId++
 
@@ -208,7 +208,7 @@ func (s *server) run(wg *sync.WaitGroup) {
 		}
 
 		select {
-		case cmd := <-s.commands:
+		case cmd := <-s.requests:
 			s.handleCMD(cmd, err, response)
 		default:
 		}
@@ -268,12 +268,7 @@ func (s *server) handleCMD(cmd common.Command, err error, response string) {
 		response = resp.Error(err)
 	}
 	if len(response) != 0 {
-		client.callbackChannel <- common.Command{
-			CMD: common.RESPONSE,
-			Arguments: common.RESPONSEArguments{
-				Response: response,
-			},
-		}
+		client.response <- response
 	}
 }
 

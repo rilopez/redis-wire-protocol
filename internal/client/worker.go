@@ -61,7 +61,9 @@ func (c *Worker) receiveCommandsLoop() {
 	writer := bufio.NewWriter(c.conn)
 	tp := textproto.NewReader(reader)
 	for {
-		c.conn.SetReadDeadline(time.Now().Add(idleTimeout))
+		if err := c.conn.SetReadDeadline(time.Now().Add(idleTimeout)); err != nil {
+			log.Fatal(err)
+		}
 		cmd, err := c.readCommand(tp)
 		if err != nil {
 
@@ -83,8 +85,14 @@ func (c *Worker) receiveCommandsLoop() {
 			}
 		} else {
 			c.request <- cmd
-			writer.WriteString(<-c.response)
-			writer.Flush()
+			_, err := writer.WriteString(<-c.response)
+			if err != nil {
+				log.Printf("ERR writing to connection %v ", err)
+			}
+			err = writer.Flush()
+			if err != nil {
+				log.Printf("ERR trying to flush response %v ", err)
+			}
 
 		}
 	}

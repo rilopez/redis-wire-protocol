@@ -63,6 +63,14 @@ type RESPONSEArguments struct {
 type SETArguments struct {
 	Key   string
 	Value string
+
+	//TODO support SET EX seconds -- Set the specified expire time, in seconds.
+	//TODO support SET	PX milliseconds -- Set the specified expire time, in milliseconds.
+	//TODO support SET	NX -- Only set the key if it does not already exist.
+	//TODO support SET	XX -- Only set the key if it already exist.
+	//TODO support SET	KEEPTTL -- Retain the time to live associated with the key.
+	//OptionGET -- Return the old value stored at key, or nil when key did not exist.
+	OptionGET bool
 }
 
 type GETArguments struct {

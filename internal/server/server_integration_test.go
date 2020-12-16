@@ -202,5 +202,3 @@ func TestServerLifecycle(t *testing.T) {
 	common.AssertEquals(t, <-events, EventSuccessfulShutdown)
 
 }
-
-//TODO  benchmark

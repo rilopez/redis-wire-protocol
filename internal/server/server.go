@@ -316,10 +316,15 @@ func (s *server) handleSET(args common.CommandArguments) (response string, err e
 	if !ok {
 		return "-ERR", fmt.Errorf("invalid SET argments %v", args)
 	}
+	var prevValue *string
 	s.mux.Lock()
+	prevValue = s.db[setArgs.Key]
 	s.db[setArgs.Key] = &setArgs.Value
 	s.mux.Unlock()
 
+	if setArgs.OptionGET {
+		return resp.BulkString(prevValue), nil
+	}
 	return resp.SimpleString("OK"), nil
 }
 

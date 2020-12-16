@@ -12,10 +12,10 @@ import (
 )
 
 func TestBasicOps(t *testing.T) {
-	t.Parallel()
+	defer goleak.VerifyNone(t)
 	ready := make(chan bool, 1)
 	quit := make(chan bool, 1)
-	events := make(chan string, 1)
+	events := make(chan string, 2)
 	port := uint(10_001)
 	go Start(port, 1, ready, quit, events)
 
@@ -38,15 +38,17 @@ func TestBasicOps(t *testing.T) {
 
 	delResult, err := rdb.Del(ctx, "x").Result()
 	common.ExpectNoError(t, err)
-	if delResult != 1 {
-		t.Errorf(`want val equals 1 , got %v `, val)
-	}
+	common.AssertEquals(t, delResult, int64(1))
 
 	val, err = rdb.Get(ctx, "x").Result()
+	common.AssertEquals(t, err, redis.Nil)
 
-	if err != redis.Nil {
-		t.Errorf(`want err "%s" , got %v `, redis.Nil, err)
-	}
+	quit <- true
+
+	common.AssertEquals(t, <-events, EventAfterDisconnect)
+	common.AssertEquals(t, <-events, EventSuccessfulShutdown)
+
+	rdb.Close()
 
 }
 

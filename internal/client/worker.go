@@ -2,7 +2,9 @@ package client
 
 import (
 	"bufio"
+	"errors"
 	"github.com/rilopez/redis-wire-protocol/internal/resp"
+	"io"
 	"log"
 	"net"
 	"net/textproto"
@@ -54,7 +56,11 @@ func (c *Worker) receiveCommandsLoop() {
 				if errTimeout, ok := err.(net.Error); ok && errTimeout.Timeout() {
 					continue
 				} else {
-					log.Printf("ERR  readCommand :%v ", err)
+					if errors.Is(err, io.EOF) {
+						log.Printf("ERR  client connection EOF ")
+					} else {
+						log.Printf("ERR  readCommand :%v ", err)
+					}
 					return
 				}
 			}

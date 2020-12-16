@@ -61,7 +61,7 @@ type server struct {
 
 type connectedClient struct {
 	ID             uint
-	response       chan string
+	response       chan<- string
 	lastCMDEpoch   int64
 	lastCMD        common.CommandID
 	quit           chan<- bool

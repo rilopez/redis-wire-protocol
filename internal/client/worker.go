@@ -22,14 +22,14 @@ type Worker struct {
 	ID       uint
 	conn     net.Conn
 	request  chan<- common.Command
-	response chan string
+	response <-chan string
 	quit     <-chan bool
 	now      func() time.Time
 }
 
 // NewWorker allocates a Worker
 //TODO change inbound param to <-chan common.Command
-func NewWorker(conn net.Conn, ID uint, request chan<- common.Command, response chan string, now func() time.Time, quit <-chan bool) (*Worker, error) {
+func NewWorker(conn net.Conn, ID uint, request chan<- common.Command, response <-chan string, now func() time.Time, quit <-chan bool) (*Worker, error) {
 	if conn == nil {
 		return nil, fmt.Errorf("conn can not be nil")
 	}

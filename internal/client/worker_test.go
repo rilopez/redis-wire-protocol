@@ -10,7 +10,7 @@ func TestNewWorker(t *testing.T) {
 	conn := &net.TCPConn{}
 	quit := make(<-chan bool)
 	request := make(chan<- common.Command)
-	response := make(chan string)
+	response := make(<-chan string)
 	worker, err := NewWorker(conn, 123, request, response, common.FrozenInTime, quit)
 	common.ExpectNoError(t, err)
 	common.AssertEquals(t, worker.ID, uint(123))

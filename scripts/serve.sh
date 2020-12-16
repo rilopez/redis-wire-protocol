@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-#  spin up a tcp server for redis protocol
+#  start a tcp server for redis protocol
 #
 #   usage
 #      scripts/serve.sh  <options>
@@ -16,7 +16,7 @@ set -euo pipefail
 LOG_FILE="server.log"
 SERVER_OUTPUT_FILE="server-output.txt"
 
-echo "starting redis simple clone server  & redirecting std & stderr  to $LOG_FILE & $SERVER_OUTPUT_FILE"
+echo "starting REDIS simple clone server  & redirecting std & stderr  to $LOG_FILE & $SERVER_OUTPUT_FILE"
 echo "Press CTRL + C to quit"
 go run cmd/server.go "$@"  > server-output.txt 2>server.log
 

@@ -44,59 +44,26 @@ and output in stdout
 **Test with telnet**
 ```bash
 telnet localhost 6379
-SET x 1
-+OK
-GET x
-+1
-DEL x
-:1
+# SET x 1
+# +OK
+# GET x
+# +1
+# DEL x
+# :1
 ```
 
 **Test with redis bechmark**
+
 ```bash
-redis-benchmark -t GET,SET
+redis-benchmark -t set,get -n 1000000 -q                                            
+# SET: 119531.44 requests per second
+# GET: 135208.22 requests per second
+#
+# REDIS real server is at least twice as fast, here some numbers from may local
+# SET: 219731.92 requests per second
+# GET: 214178.62 requests per second
 
-====== SET ======
-  100000 requests completed in 0.69 seconds
-  50 parallel clients
-  3 bytes payload
-  keep alive: 1
-
-98.65% <= 1 milliseconds
-98.72% <= 2 milliseconds
-98.87% <= 3 milliseconds
-99.04% <= 4 milliseconds
-99.23% <= 5 milliseconds
-99.43% <= 6 milliseconds
-99.53% <= 7 milliseconds
-99.61% <= 8 milliseconds
-99.66% <= 9 milliseconds
-99.74% <= 10 milliseconds
-99.81% <= 11 milliseconds
-99.86% <= 12 milliseconds
-99.90% <= 14 milliseconds
-100.00% <= 14 milliseconds
-145985.41 requests per second
-
-====== GET ======
-  100000 requests completed in 0.68 seconds
-  50 parallel clients
-  3 bytes payload
-  keep alive: 1
-
-98.82% <= 1 milliseconds
-99.15% <= 2 milliseconds
-99.35% <= 3 milliseconds
-99.40% <= 4 milliseconds
-99.52% <= 5 milliseconds
-99.65% <= 6 milliseconds
-99.70% <= 7 milliseconds
-99.79% <= 8 milliseconds
-99.85% <= 10 milliseconds
-99.85% <= 11 milliseconds
-99.90% <= 12 milliseconds
-100.00% <= 12 milliseconds
-146842.88 requests per second
+# 
 
 ```
 

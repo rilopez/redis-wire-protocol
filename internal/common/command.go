@@ -1,7 +1,5 @@
 package common
 
-import "fmt"
-
 // CommandID command id type
 type CommandID int
 
@@ -34,10 +32,6 @@ type Command struct {
 	ClientID        uint64
 	CallbackChannel chan Command
 	Arguments       CommandArguments
-}
-
-func (cmd Command) String() string {
-	return fmt.Sprintf("%s args: %v", cmd.CMD, cmd.Arguments)
 }
 
 type CommandArguments interface{}

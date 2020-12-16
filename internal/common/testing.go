@@ -31,6 +31,6 @@ func ExpectNoError(t *testing.T, err error) {
 func AssertEquals(t *testing.T, got interface{}, want interface{}) {
 	t.Helper()
 	if got != want {
-		t.Errorf("expecting %s , got %s", got, want)
+		t.Errorf("expecting %s , got %s", want, got)
 	}
 }

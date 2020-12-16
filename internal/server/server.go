@@ -64,6 +64,7 @@ type connectedClient struct {
 	callbackChannel chan common.Command
 	lastCMDEpoch    int64
 	lastCMD         common.CommandID
+	quit            chan<- bool
 }
 
 // NewCore allocates a Core struct
@@ -118,8 +119,13 @@ func (s *server) listenConnections(wg *sync.WaitGroup, quitListening chan bool) 
 				log.Print("listenConnections got a quit signal ")
 				return
 			default:
-				log.Printf("Failed to accept connection: %v", err)
-				continue
+
+				if err, ok := err.(net.Error); ok && err.Timeout() {
+					continue
+				} else {
+					panic(err)
+				}
+
 			}
 		} else {
 			client, err := s.registerClient(conn)
@@ -151,13 +157,16 @@ func (s *server) registerClient(conn net.Conn) (*client.Worker, error) {
 		log.Panicf("duplicated client ID %d", s.nextClientId)
 	}
 
+	//TODO  try to delete callback chan
 	callbackChan := make(chan common.Command)
+	quit := make(chan bool)
 	client, err := client.NewWorker(
 		conn,
 		s.nextClientId,
 		s.commands,
 		callbackChan,
 		s.now,
+		quit,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("ERR trying to create a client worker for the connection, %v", err)
@@ -166,6 +175,7 @@ func (s *server) registerClient(conn net.Conn) (*client.Worker, error) {
 	s.clients[client.ID] = &connectedClient{
 		ID:              client.ID,
 		callbackChannel: callbackChan,
+		quit:            quit,
 	}
 	s.nextClientId++
 
@@ -358,12 +368,15 @@ func (s *server) handleINFO() (string, error) {
 func (s *server) shutdown() {
 	s.setState(serverStateShuttingDown)
 	s.mux.Lock()
-	log.Printf("trying to kill %d connected clients", len(s.clients))
-	for id, c := range s.clients {
-		log.Printf("sending kill signal to client with ID :%d", id)
-		c.callbackChannel <- common.Command{
-			CMD: common.KILL,
-		}
-	}
+	clients := s.clients
 	s.mux.Unlock()
+	log.Printf("trying to kill %d connected clients", len(s.clients))
+	for id, c := range clients {
+		log.Printf("sending kill signal to client with ID :%d", id)
+		if c.quit == nil {
+			log.Printf("client callback channel is nil")
+		}
+		c.quit <- true
+	}
+
 }

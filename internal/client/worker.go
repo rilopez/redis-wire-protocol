@@ -3,7 +3,6 @@ package client
 import (
 	"bufio"
 	"github.com/rilopez/redis-wire-protocol/internal/resp"
-	"io"
 	"log"
 	"net"
 	"net/textproto"
@@ -13,22 +12,26 @@ import (
 	"github.com/rilopez/redis-wire-protocol/internal/common"
 )
 
+const idleTimeout = 2 * time.Second
+
 // Worker is used to handle a client connection
 type Worker struct {
 	ID         uint64
 	conn       net.Conn
 	toServer   chan<- common.Command
 	fromServer chan common.Command
+	quit       <-chan bool
 	now        func() time.Time
 }
 
 // NewWorker allocates a Worker
-func NewWorker(conn net.Conn, ID uint64, outbound chan<- common.Command, inbound chan common.Command, now func() time.Time) (*Worker, error) {
+func NewWorker(conn net.Conn, ID uint64, outbound chan<- common.Command, inbound chan common.Command, now func() time.Time, quit <-chan bool) (*Worker, error) {
 	client := &Worker{
 		ID:         ID,
 		conn:       conn,
 		toServer:   outbound,
 		fromServer: inbound,
+		quit:       quit,
 		now:        now,
 	}
 	return client, nil
@@ -39,33 +42,37 @@ func (c *Worker) receiveCommandsLoop() {
 	writer := bufio.NewWriter(c.conn)
 	tp := textproto.NewReader(reader)
 	for {
+		c.conn.SetReadDeadline(time.Now().Add(idleTimeout))
 		cmd, err := c.readCommand(tp)
 		if err != nil {
-			if err != nil {
-				if err == io.EOF {
-					log.Printf("EOF :%v ", err)
+
+			select {
+			case <-c.quit:
+				log.Printf("worker with ID %d got quick signal stopping reading loop ", c.ID)
+				return
+			default:
+				if err, ok := err.(net.Error); ok && err.Timeout() {
+					continue
 				} else {
 					log.Printf("ERR  readCommand :%v ", err)
+					return
 				}
-				break
+			}
+		} else {
+			c.toServer <- cmd
+			cmdResponse := <-c.fromServer
+			if cmdResponse.CMD == common.RESPONSE {
+				v, ok := cmdResponse.Arguments.(common.RESPONSEArguments)
+				if !ok {
+					log.Panicf("invalid response arguments %v", cmdResponse.Arguments)
+				}
+				writer.WriteString(v.Response)
+				writer.Flush()
+			} else {
+				log.Printf("ERR [worker] unsupported cmd from server %v", cmdResponse)
+				return
 			}
 		}
-		c.toServer <- cmd
-		cmdResponse := <-c.fromServer
-		switch cmdResponse.CMD {
-		case common.RESPONSE:
-			v, ok := cmdResponse.Arguments.(common.RESPONSEArguments)
-			if !ok {
-				log.Panicf("invalid response arguments %v", cmdResponse.Arguments)
-			}
-			writer.WriteString(v.Response)
-			writer.Flush()
-
-		case common.KILL:
-			log.Printf("client %d got kill signal stopping read loop", c.ID)
-			break
-		}
-
 	}
 }
 

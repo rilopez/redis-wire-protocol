@@ -28,10 +28,9 @@ const (
 
 // Command is used to send data between clients and server core
 type Command struct {
-	CMD             CommandID
-	ClientID        uint64
-	CallbackChannel chan Command
-	Arguments       CommandArguments
+	CMD       CommandID
+	ClientID  uint64
+	Arguments CommandArguments
 }
 
 type CommandArguments interface{}

@@ -19,40 +19,40 @@ const idleTimeout = 20 * time.Millisecond
 
 // Worker is used to handle a client connection
 type Worker struct {
-	ID         uint64
-	conn       net.Conn
-	toServer   chan<- common.Command
-	fromServer chan common.Command
-	quit       <-chan bool
-	now        func() time.Time
+	ID       uint64
+	conn     net.Conn
+	request  chan<- common.Command
+	response chan common.Command
+	quit     <-chan bool
+	now      func() time.Time
 }
 
 // NewWorker allocates a Worker
 //TODO change inbound param to <-chan common.Command
-func NewWorker(conn net.Conn, ID uint64, outbound chan<- common.Command, inbound chan common.Command, now func() time.Time, quit <-chan bool) (*Worker, error) {
+func NewWorker(conn net.Conn, ID uint64, request chan<- common.Command, response chan common.Command, now func() time.Time, quit <-chan bool) (*Worker, error) {
 	if conn == nil {
 		return nil, fmt.Errorf("conn can not be nil")
 	}
-	if outbound == nil {
-		return nil, fmt.Errorf("outbound can not be nil")
+	if request == nil {
+		return nil, fmt.Errorf("request chan can not be nil")
 	}
-	if inbound == nil {
-		return nil, fmt.Errorf("inbound can not be nil")
+	if response == nil {
+		return nil, fmt.Errorf("response chan can not be nil")
 	}
 	if quit == nil {
-		return nil, fmt.Errorf("quit can not be nil")
+		return nil, fmt.Errorf("quit chan can not be nil")
 	}
 	if now == nil {
 		return nil, fmt.Errorf("now function can not be nil")
 	}
 
 	client := &Worker{
-		ID:         ID,
-		conn:       conn,
-		toServer:   outbound,
-		fromServer: inbound,
-		quit:       quit,
-		now:        now,
+		ID:       ID,
+		conn:     conn,
+		request:  request,
+		response: response,
+		quit:     quit,
+		now:      now,
 	}
 	return client, nil
 }
@@ -83,8 +83,8 @@ func (c *Worker) receiveCommandsLoop() {
 				}
 			}
 		} else {
-			c.toServer <- cmd
-			cmdResponse := <-c.fromServer
+			c.request <- cmd
+			cmdResponse := <-c.response
 			if cmdResponse.CMD == common.RESPONSE {
 				v, ok := cmdResponse.Arguments.(common.RESPONSEArguments)
 				if !ok {
@@ -104,10 +104,9 @@ func (c *Worker) readCommand(reader *textproto.Reader) (common.Command, error) {
 	cmd, data, err := resp.DeserializeCMD(reader)
 
 	return common.Command{
-		CMD:             cmd,
-		ClientID:        c.ID,
-		Arguments:       data,
-		CallbackChannel: c.fromServer,
+		CMD:       cmd,
+		ClientID:  c.ID,
+		Arguments: data,
 	}, err
 }
 
@@ -118,7 +117,7 @@ func (c *Worker) Read(wg *sync.WaitGroup) {
 			log.Printf("ERR trying to close the connection %v", err)
 		}
 
-		c.toServer <- common.Command{
+		c.request <- common.Command{
 			CMD:      common.INTERNAL_DEREGISTER,
 			ClientID: c.ID,
 		}

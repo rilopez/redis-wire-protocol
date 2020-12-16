@@ -267,8 +267,8 @@ func (s *server) handleCMD(cmd common.Command, err error, response string) {
 		log.Printf("ERR %v", err)
 		response = resp.Error(err)
 	}
-	if len(response) != 0 && cmd.CallbackChannel != nil {
-		cmd.CallbackChannel <- common.Command{
+	if len(response) != 0 {
+		client.callbackChannel <- common.Command{
 			CMD: common.RESPONSE,
 			Arguments: common.RESPONSEArguments{
 				Response: response,

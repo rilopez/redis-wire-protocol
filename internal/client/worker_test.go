@@ -15,7 +15,7 @@ func TestNewWorker(t *testing.T) {
 	common.ExpectNoError(t, err)
 	common.AssertEquals(t, worker.ID, uint64(123))
 	common.AssertEquals(t, worker.quit, quit)
-	common.AssertEquals(t, worker.toServer, outbound)
-	common.AssertEquals(t, worker.fromServer, inbound)
+	common.AssertEquals(t, worker.request, outbound)
+	common.AssertEquals(t, worker.response, inbound)
 	common.AssertEquals(t, worker.now().String(), common.FrozenInTime().String())
 }

@@ -25,9 +25,7 @@ func TestBasicOps(t *testing.T) {
 	rdb := redis.NewClient(&redis.Options{
 		Addr: fmt.Sprintf("localhost:%d", port),
 	})
-	t.Cleanup(func() {
-		rdb.Close()
-	})
+
 	ctx := context.Background()
 	err := rdb.Set(ctx, "x", 1, 0).Err()
 	common.ExpectNoError(t, err)
@@ -42,13 +40,11 @@ func TestBasicOps(t *testing.T) {
 
 	val, err = rdb.Get(ctx, "x").Result()
 	common.AssertEquals(t, err, redis.Nil)
-
+	rdb.Close()
+	common.AssertEquals(t, <-events, EventAfterDisconnect)
 	quit <- true
 
-	common.AssertEquals(t, <-events, EventAfterDisconnect)
 	common.AssertEquals(t, <-events, EventSuccessfulShutdown)
-
-	rdb.Close()
 
 }
 

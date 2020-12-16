@@ -119,7 +119,7 @@ func TestMaxClients(t *testing.T) {
 
 	ready := make(chan bool, 1)
 	quit := make(chan bool)
-	events := make(chan string, 5)
+	events := make(chan string)
 	port := uint(10_004)
 	server := newServer(time.Now, port, 2, ready, quit, events)
 	var wg sync.WaitGroup
@@ -134,14 +134,14 @@ func TestMaxClients(t *testing.T) {
 	client1 := redis.NewClient(&redis.Options{
 		Addr: fmt.Sprintf("localhost:%d", port),
 	})
-	defer client1.Close()
+	//defer client1.Close()
 
 	err := client1.Set(ctx, "y", 99, 0).Err()
 	common.ExpectNoError(t, err)
 	client2 := redis.NewClient(&redis.Options{
 		Addr: fmt.Sprintf("localhost:%d", port),
 	})
-	defer client2.Close()
+	//defer client2.Close()
 	val, err := client2.Get(ctx, "y").Result()
 	common.ExpectNoError(t, err)
 	common.AssertEquals(t, val, "99")
@@ -151,16 +151,15 @@ func TestMaxClients(t *testing.T) {
 		Addr:       fmt.Sprintf("localhost:%d", port),
 		MaxRetries: 1,
 	})
-	defer client3.Close()
 
 	err = client3.Get(ctx, "y").Err()
 	if err == nil {
 		t.Errorf("expecting error")
 	}
-	//quit <- true
-	//common.AssertEquals(t, <-events, EventAfterDisconnect)
-	//common.AssertEquals(t, <-events, EventAfterDisconnect)
-	//common.AssertEquals(t, <-events, EventSuccessfulShutdown)
+	quit <- true
+	common.AssertEquals(t, <-events, EventAfterDisconnect)
+	common.AssertEquals(t, <-events, EventAfterDisconnect)
+	common.AssertEquals(t, <-events, EventSuccessfulShutdown)
 
 }
 

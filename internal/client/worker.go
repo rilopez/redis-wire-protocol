@@ -116,8 +116,9 @@ func (c *Worker) Read(wg *sync.WaitGroup) {
 		}
 
 		c.request <- common.Command{
-			CMD:      common.INTERNAL_DEREGISTER,
-			ClientID: c.ID,
+			CMD:       common.CLIENT,
+			Arguments: common.CLIENTArguments{Subcommand: common.ClientSubcommandKILL},
+			ClientID:  c.ID,
 		}
 		wg.Done()
 	}()

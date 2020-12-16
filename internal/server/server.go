@@ -269,9 +269,6 @@ func (s *server) handleCMD(cmd common.Command, err error, response string) {
 		response, err = s.handleCLIENT(cmd.Arguments, c)
 	case common.UNKNOWN:
 		err = fmt.Errorf("unsupported command %v", cmd.Arguments)
-	//TODO change to client kill
-	case common.INTERNAL_DEREGISTER:
-		err = s.disconnect(c.ID)
 	default:
 		err = fmt.Errorf("invalid server command %d", cmd.CMD)
 	}
@@ -292,14 +289,16 @@ func (s *server) clientByID(ID uint) (*connectedClient, bool) {
 	return dev, exists
 }
 
-func (s *server) handleCLIENT(args common.CommandArguments, client *connectedClient) (response string, err error) {
+func (s *server) handleCLIENT(args common.CommandArguments, c *connectedClient) (response string, err error) {
 	clientArgs, ok := args.(common.CLIENTArguments)
 	if !ok {
 		return "-ERR", fmt.Errorf("invalid CLIENT argments %v", args)
 	}
 	switch clientArgs.Subcommand {
+	case common.ClientSubcommandKILL:
+		return "", s.disconnect(c.ID)
 	case common.ClientSubcommandID:
-		return resp.Integer(int(client.ID)), nil
+		return resp.Integer(int(c.ID)), nil
 	case common.ClientSubcommandLIST:
 		var sb strings.Builder
 		s.mux.Lock()
@@ -311,7 +310,7 @@ func (s *server) handleCLIENT(args common.CommandArguments, client *connectedCli
 		return resp.SimpleString(sb.String()), nil
 
 	case common.ClientSubcommandINFO:
-		return resp.SimpleString(fmt.Sprintf("%s\n", client.info(s.now))), nil
+		return resp.SimpleString(fmt.Sprintf("%s\n", c.info(s.now))), nil
 
 	default:
 		return "-ERR", fmt.Errorf("unsupported CLIENT subcommand %v", args)

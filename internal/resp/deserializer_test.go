@@ -88,7 +88,7 @@ func TestDeserialize(t *testing.T) {
 		},
 		{
 			name:        "CLIENT invalid subcommand",
-			args:        args{serializedCMD: "*2\r\n$6\r\nCLIENT\r\n$4\nKILL\n"},
+			args:        args{serializedCMD: "*2\r\n$6\r\nCLIENT\r\n$3\nABC\n"},
 			wantCMD:     common.CLIENT,
 			wantCMDArgs: nil,
 			wantErr:     true,

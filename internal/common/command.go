@@ -24,9 +24,6 @@ const (
 	//  https://redis.io/commands/client-info
 	//  https://redis.io/commands/client-id
 	CLIENT
-
-	// INTERNAL_DEREGISTER used to indicate the client to log itself out
-	INTERNAL_DEREGISTER
 )
 
 type ClientSubcommand string
@@ -35,11 +32,12 @@ const (
 	ClientSubcommandID   ClientSubcommand = "ID"
 	ClientSubcommandINFO ClientSubcommand = "INFO"
 	ClientSubcommandLIST ClientSubcommand = "LIST"
+	ClientSubcommandKILL ClientSubcommand = "KILL"
 )
 
 func (sub ClientSubcommand) IsValid() error {
 	switch sub {
-	case ClientSubcommandID, ClientSubcommandINFO, ClientSubcommandLIST:
+	case ClientSubcommandID, ClientSubcommandINFO, ClientSubcommandLIST, ClientSubcommandKILL:
 		return nil
 	}
 	return fmt.Errorf("%s is an invalid client subcommand", sub)

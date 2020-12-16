@@ -27,6 +27,8 @@ type Worker struct {
 }
 
 // NewWorker allocates a Worker
+//TODO change inbound param to <-chan common.Command
+//TODO check for nils
 func NewWorker(conn net.Conn, ID uint64, outbound chan<- common.Command, inbound chan common.Command, now func() time.Time, quit <-chan bool) (*Worker, error) {
 	client := &Worker{
 		ID:         ID,

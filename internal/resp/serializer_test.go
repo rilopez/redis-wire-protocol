@@ -52,7 +52,7 @@ func TestError(t *testing.T) {
 
 	gotErr := Error(ErrDummy)
 
-	wantErr := "-Dummy Error\r\n"
+	wantErr := "-dummy Error\r\n"
 	if gotErr != wantErr {
 		t.Errorf("Error(): %v , want: %v", gotErr, wantErr)
 	}

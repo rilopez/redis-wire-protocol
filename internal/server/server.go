@@ -250,8 +250,9 @@ func (s *server) getState() serverState {
 
 func (s *server) handleCMD(cmd common.Command, err error, response string) {
 	c, exists := s.clientByID(cmd.ClientID)
-	if !exists {
-		err = fmt.Errorf("client ID  %d does not exists", cmd.ClientID)
+	if !exists || c == nil {
+		log.Printf("client ID  %d does not exists", cmd.ClientID)
+		return
 	}
 	c.lastCMD = cmd.CMD
 	c.lastCMDEpoch = s.now().UnixNano()
@@ -383,6 +384,11 @@ func (s *server) handleDEL(args common.CommandArguments) (response string, err e
 }
 
 func (s *server) disconnect(clientID uint) error {
+	_, exists := s.clientByID(clientID)
+	if !exists {
+		return fmt.Errorf("client ID  %d does not exists", clientID)
+	}
+
 	s.mux.Lock()
 	delete(s.clients, clientID)
 	s.mux.Unlock()

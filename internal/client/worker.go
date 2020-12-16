@@ -85,6 +85,10 @@ func (c *Worker) receiveCommandsLoop() {
 			}
 		} else {
 			c.request <- cmd
+			if cmd.CMD == common.CLIENT && cmd.Arguments.(common.CLIENTArguments).Subcommand == common.ClientSubcommandKILL {
+				log.Printf("worker got a CLIENT KILL cmd, stopping reading loop ")
+				return
+			}
 			_, err := writer.WriteString(<-c.response)
 			if err != nil {
 				log.Printf("ERR writing to connection %v ", err)

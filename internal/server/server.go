@@ -111,7 +111,9 @@ func (s *server) listenConnections(wg *sync.WaitGroup, quitListening chan bool) 
 		log.Fatalf("ERR Failed to start tcp listener at %s,  %v", fmt.Sprintf(":%d", s.port), err)
 	}
 	defer func() {
-		ln.Close()
+		if err = ln.Close(); err != nil {
+			log.Fatal(err)
+		}
 		wg.Done()
 		log.Print("listened connections loop stopped")
 	}()
@@ -119,7 +121,9 @@ func (s *server) listenConnections(wg *sync.WaitGroup, quitListening chan bool) 
 	log.Printf("Server started listening for connections at %s ", fmt.Sprintf(":%d", s.port))
 	s.ready <- true
 	for {
-		ln.SetDeadline(time.Now().Add(idleTimeout))
+		if err := ln.SetDeadline(time.Now().Add(idleTimeout)); err != nil {
+			log.Fatal(err)
+		}
 		conn, err := ln.Accept()
 		if err != nil {
 			select {
@@ -136,16 +140,18 @@ func (s *server) listenConnections(wg *sync.WaitGroup, quitListening chan bool) 
 
 			}
 		} else {
-			client, err := s.registerClient(conn)
+			c, err := s.registerClient(conn)
 			if err != nil {
-				conn.Close()
 				log.Printf("ERR trying to register a new client: %v", err)
+				if err = conn.Close(); err != nil {
+					log.Printf("ERR %v", err)
+				}
 				continue
 			}
 
 			log.Printf("client connection from %v", conn.RemoteAddr())
 			wg.Add(1)
-			go client.Read(wg)
+			go c.Read(wg)
 		}
 
 	}
@@ -167,7 +173,7 @@ func (s *server) registerClient(conn net.Conn) (*client.Worker, error) {
 
 	response := make(chan string)
 	quit := make(chan bool)
-	client, err := client.NewWorker(
+	worker, err := client.NewWorker(
 		conn,
 		s.nextClientId,
 		s.requests,
@@ -179,16 +185,16 @@ func (s *server) registerClient(conn net.Conn) (*client.Worker, error) {
 		return nil, fmt.Errorf("ERR trying to create a client worker for the connection, %v", err)
 	}
 
-	s.clients[client.ID] = &connectedClient{
+	s.clients[worker.ID] = &connectedClient{
 		connectedSince: s.now(),
 		addr:           conn.RemoteAddr().String(),
-		ID:             client.ID,
+		ID:             worker.ID,
 		response:       response,
 		quit:           quit,
 	}
 	s.nextClientId++
 
-	return client, nil
+	return worker, nil
 
 }
 
@@ -243,12 +249,12 @@ func (s *server) getState() serverState {
 }
 
 func (s *server) handleCMD(cmd common.Command, err error, response string) {
-	client, exists := s.clientByID(cmd.ClientID)
+	c, exists := s.clientByID(cmd.ClientID)
 	if !exists {
 		err = fmt.Errorf("client ID  %d does not exists", cmd.ClientID)
 	}
-	client.lastCMD = cmd.CMD
-	client.lastCMDEpoch = s.now().UnixNano()
+	c.lastCMD = cmd.CMD
+	c.lastCMDEpoch = s.now().UnixNano()
 
 	switch cmd.CMD {
 	case common.SET:
@@ -260,11 +266,11 @@ func (s *server) handleCMD(cmd common.Command, err error, response string) {
 	case common.INFO:
 		response, err = s.handleINFO()
 	case common.CLIENT:
-		response, err = s.handleCLIENT(cmd.Arguments, client)
+		response, err = s.handleCLIENT(cmd.Arguments, c)
 	case common.UNKNOWN:
 		err = fmt.Errorf("unsupported command %v", cmd.Arguments)
 	case common.INTERNAL_DEREGISTER:
-		err = s.disconnect(client.ID)
+		err = s.disconnect(c.ID)
 	default:
 		err = fmt.Errorf("invalid server command %d", cmd.CMD)
 	}
@@ -273,7 +279,7 @@ func (s *server) handleCMD(cmd common.Command, err error, response string) {
 		response = resp.Error(err)
 	}
 	if len(response) != 0 {
-		client.response <- response
+		c.response <- response
 	}
 }
 

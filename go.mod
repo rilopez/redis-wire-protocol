@@ -1,7 +1,8 @@
 module github.com/rilopez/redis-wire-protocol
 
-go 1.17
+go 1.16
 
+//PLEASE NOTE This dependencies are used only for testing, for the server implementation I used only go std lib
 require (
 	github.com/go-redis/redis/v8 v8.4.2 // used only to validate our server
 	go.uber.org/goleak v1.1.10

@@ -68,6 +68,31 @@ func TestDeserialize(t *testing.T) {
 			},
 			wantErr: false,
 		},
+
+		{
+			name:        "INFO",
+			args:        args{serializedCMD: "*1\r\n$4\r\nINFO\r\n"},
+			wantCMD:     common.INFO,
+			wantCMDArgs: nil,
+			wantErr:     false,
+		},
+
+		{
+			name:    "CLIENT ID",
+			args:    args{serializedCMD: "*2\r\n$6\r\nCLIENT\r\n$2\nID\n"},
+			wantCMD: common.CLIENT,
+			wantCMDArgs: common.CLIENTArguments{
+				Subcommand: common.ClientSubcommandID,
+			},
+			wantErr: false,
+		},
+		{
+			name:        "CLIENT invalid subcommand",
+			args:        args{serializedCMD: "*2\r\n$6\r\nCLIENT\r\n$4\nKILL\n"},
+			wantCMD:     common.CLIENT,
+			wantCMDArgs: nil,
+			wantErr:     true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

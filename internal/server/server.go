@@ -45,14 +45,14 @@ func Start(port uint, serverMaxClients uint, ready chan<- bool, quit <-chan bool
 
 // server maintains a map of clients and communication channels
 type server struct {
-	clients          map[uint64]*connectedClient
+	clients          map[uint]*connectedClient
 	db               map[string]*string
 	requests         chan common.Command
 	ready            chan<- bool
 	events           chan<- string
 	quit             <-chan bool
 	port             uint
-	nextClientId     uint64
+	nextClientId     uint
 	serverMaxClients uint
 	now              func() time.Time
 	mux              sync.Mutex
@@ -60,17 +60,25 @@ type server struct {
 }
 
 type connectedClient struct {
-	ID           uint64
-	response     chan string
-	lastCMDEpoch int64
-	lastCMD      common.CommandID
-	quit         chan<- bool
+	ID             uint
+	response       chan string
+	lastCMDEpoch   int64
+	lastCMD        common.CommandID
+	quit           chan<- bool
+	addr           string
+	connectedSince time.Time
+}
+
+func (c connectedClient) info(now func() time.Time) string {
+	age := now().Sub(c.connectedSince)
+
+	return fmt.Sprintf("id:%d addr:%s age:%f cmd:%d", c.ID, c.addr, age.Seconds(), c.lastCMD)
 }
 
 // NewCore allocates a Core struct
 func newServer(now func() time.Time, port uint, serverMaxClients uint, ready chan<- bool, quit <-chan bool, events chan<- string) *server {
 	return &server{
-		clients:          make(map[uint64]*connectedClient),
+		clients:          make(map[uint]*connectedClient),
 		db:               make(map[string]*string),
 		requests:         make(chan common.Command),
 		events:           events,
@@ -173,9 +181,11 @@ func (s *server) registerClient(conn net.Conn) (*client.Worker, error) {
 	}
 
 	s.clients[client.ID] = &connectedClient{
-		ID:       client.ID,
-		response: response,
-		quit:     quit,
+		connectedSince: s.now(),
+		addr:           conn.RemoteAddr().String(),
+		ID:             client.ID,
+		response:       response,
+		quit:           quit,
 	}
 	s.nextClientId++
 
@@ -250,6 +260,8 @@ func (s *server) handleCMD(cmd common.Command, err error, response string) {
 		response, err = s.handleDEL(cmd.Arguments)
 	case common.INFO:
 		response, err = s.handleINFO()
+	case common.CLIENT:
+		response, err = s.handleCLIENT(cmd.Arguments, client)
 
 		//TODO support CLIENT
 		//TODO support CLIENT LIST
@@ -272,12 +284,38 @@ func (s *server) handleCMD(cmd common.Command, err error, response string) {
 	}
 }
 
-func (s *server) clientByID(ID uint64) (*connectedClient, bool) {
+func (s *server) clientByID(ID uint) (*connectedClient, bool) {
 	s.mux.Lock()
 	dev, exists := s.clients[ID]
 	s.mux.Unlock()
 
 	return dev, exists
+}
+
+func (s *server) handleCLIENT(args common.CommandArguments, client *connectedClient) (response string, err error) {
+	clientArgs, ok := args.(common.CLIENTArguments)
+	if !ok {
+		return "-ERR", fmt.Errorf("invalid CLIENT argments %v", args)
+	}
+	switch clientArgs.Subcommand {
+	case common.ClientSubcommandID:
+		return resp.Integer(int(client.ID)), nil
+	case common.ClientSubcommandLIST:
+		var sb strings.Builder
+		s.mux.Lock()
+		for _, c := range s.clients {
+			sb.WriteString(c.info(s.now))
+			sb.WriteString("\n")
+		}
+		s.mux.Unlock()
+		return resp.SimpleString(sb.String()), nil
+
+	case common.ClientSubcommandINFO:
+		return resp.SimpleString(fmt.Sprintf("%s\n", client.info(s.now))), nil
+
+	default:
+		return "-ERR", fmt.Errorf("unsupported CLIENT subcommand %v", args)
+	}
 }
 
 func (s *server) handleSET(args common.CommandArguments) (response string, err error) {
@@ -311,7 +349,7 @@ func (s *server) handleDEL(args common.CommandArguments) (response string, err e
 	}
 
 	s.mux.Lock()
-	opStatus := 0
+	var opStatus int = 0
 	for _, k := range delArgs.Keys {
 		_, exists := s.db[k]
 		if exists {
@@ -324,7 +362,7 @@ func (s *server) handleDEL(args common.CommandArguments) (response string, err e
 	return resp.Integer(opStatus), nil
 }
 
-func (s *server) disconnect(clientID uint64) error {
+func (s *server) disconnect(clientID uint) error {
 	s.mux.Lock()
 	delete(s.clients, clientID)
 	s.mux.Unlock()

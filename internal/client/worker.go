@@ -19,7 +19,7 @@ const idleTimeout = 20 * time.Millisecond
 
 // Worker is used to handle a client connection
 type Worker struct {
-	ID       uint64
+	ID       uint
 	conn     net.Conn
 	request  chan<- common.Command
 	response chan string
@@ -29,7 +29,7 @@ type Worker struct {
 
 // NewWorker allocates a Worker
 //TODO change inbound param to <-chan common.Command
-func NewWorker(conn net.Conn, ID uint64, request chan<- common.Command, response chan string, now func() time.Time, quit <-chan bool) (*Worker, error) {
+func NewWorker(conn net.Conn, ID uint, request chan<- common.Command, response chan string, now func() time.Time, quit <-chan bool) (*Worker, error) {
 	if conn == nil {
 		return nil, fmt.Errorf("conn can not be nil")
 	}

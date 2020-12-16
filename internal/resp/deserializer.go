@@ -51,6 +51,10 @@ func DeserializeCMD(reader *textproto.Reader) (common.CommandID, common.CommandA
 		return common.UNKNOWN, nil, fmt.Errorf("no command read")
 	}
 
+	return bulkStringArrayToCommand(bulkStringArray, err)
+}
+
+func bulkStringArrayToCommand(bulkStringArray []string, err error) (common.CommandID, common.CommandArguments, error) {
 	cmdStr := bulkStringArray[0]
 	var cmd common.CommandID
 	var cmdArgs common.CommandArguments
@@ -68,6 +72,9 @@ func DeserializeCMD(reader *textproto.Reader) (common.CommandID, common.CommandA
 		cmdArgs, err = parseDELArguments(args)
 	case "INFO":
 		cmd = common.INFO
+	case "CLIENT":
+		cmd = common.CLIENT
+		cmdArgs, err = parseCLIENTArguments(args)
 	default:
 		return common.UNKNOWN, bulkStringArray, nil
 	}
@@ -98,6 +105,17 @@ func parseGETArguments(args []string) (cmdArgs common.CommandArguments, err erro
 		return nil, fmt.Errorf("invalid number of args for GET command : %v", args)
 	}
 	return common.GETArguments{Key: args[0]}, nil
+}
+
+func parseCLIENTArguments(args []string) (cmdArgs common.CommandArguments, err error) {
+	if len(args) != 1 {
+		return nil, fmt.Errorf("invalid number of args for CLIENT command : %v", args)
+	}
+	subCMD := common.ClientSubcommand(strings.ToUpper(args[0]))
+	if err := subCMD.IsValid(); err != nil {
+		return nil, err
+	}
+	return common.CLIENTArguments{Subcommand: subCMD}, nil
 }
 
 func parseDELArguments(args []string) (cmdArgs common.CommandArguments, err error) {

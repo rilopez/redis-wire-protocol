@@ -41,6 +41,7 @@ func TestBasicOps(t *testing.T) {
 
 	val, err = rdb.Get(ctx, "x").Result()
 	common.AssertEquals(t, err, redis.Nil)
+
 	rdb.Close()
 	common.AssertEquals(t, <-events, EventAfterDisconnect)
 	quit <- true

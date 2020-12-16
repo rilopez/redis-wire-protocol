@@ -13,7 +13,7 @@ func TestNewWorker(t *testing.T) {
 	response := make(chan string)
 	worker, err := NewWorker(conn, 123, request, response, common.FrozenInTime, quit)
 	common.ExpectNoError(t, err)
-	common.AssertEquals(t, worker.ID, uint64(123))
+	common.AssertEquals(t, worker.ID, uint(123))
 	common.AssertEquals(t, worker.quit, quit)
 	common.AssertEquals(t, worker.request, request)
 	common.AssertEquals(t, worker.response, response)

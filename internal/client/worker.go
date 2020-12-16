@@ -3,6 +3,7 @@ package client
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"github.com/rilopez/redis-wire-protocol/internal/resp"
 	"io"
 	"log"
@@ -28,8 +29,23 @@ type Worker struct {
 
 // NewWorker allocates a Worker
 //TODO change inbound param to <-chan common.Command
-//TODO check for nils
 func NewWorker(conn net.Conn, ID uint64, outbound chan<- common.Command, inbound chan common.Command, now func() time.Time, quit <-chan bool) (*Worker, error) {
+	if conn == nil {
+		return nil, fmt.Errorf("conn can not be nil")
+	}
+	if outbound == nil {
+		return nil, fmt.Errorf("outbound can not be nil")
+	}
+	if inbound == nil {
+		return nil, fmt.Errorf("inbound can not be nil")
+	}
+	if quit == nil {
+		return nil, fmt.Errorf("quit can not be nil")
+	}
+	if now == nil {
+		return nil, fmt.Errorf("now function can not be nil")
+	}
+
 	client := &Worker{
 		ID:         ID,
 		conn:       conn,

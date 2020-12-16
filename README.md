@@ -52,7 +52,7 @@ telnet localhost 6379
 # :1
 ```
 
-**Test with redis bechmark**
+**Test with redis benchmark**
 
 ```bash
 redis-benchmark -t set,get -n 1000000 -q                                            
@@ -62,17 +62,17 @@ redis-benchmark -t set,get -n 1000000 -q
 # REDIS real server is at least twice as fast, here some numbers from may local
 # SET: 219731.92 requests per second
 # GET: 214178.62 requests per second
-
-# 
-
 ```
 
+Of course, you can test running `go test ./...` , take a look to `internal/server/server_intergration_test.go` for E2E
+tests.
 
+## Assumptions & Known issues
 
-
-
-
-
+1. Assuming that the challenge requirement of using only the stdlib applies only to production code, I took the liberty
+   to use these two dependencies for the testing code:
+   - [redis go client](https://github.com/go-redis/redis)
+   - [uber's go routine leak testing library](https://github.com/uber-go/goleak)
 
 [Redis Protocol specification]:https://redis.io/topics/protocol
 

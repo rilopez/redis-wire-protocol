@@ -5,13 +5,6 @@ import (
 	"time"
 )
 
-// ShouldPanic assert that `f` panics during execution
-func ShouldPanic(t *testing.T, f func()) {
-	defer func() { recover() }()
-	f()
-	t.Errorf("should have panicked")
-}
-
 func FrozenInTime() time.Time {
 	loc, err := time.LoadLocation("EST")
 	if err != nil {

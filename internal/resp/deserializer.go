@@ -93,8 +93,6 @@ func parseSETArguments(args []string) (cmdArgs common.CommandArguments, err erro
 	//TODO  parse  options SET	NX -- Only set the key if it does not already exist.
 	//TODO  parse  options SET	XX -- Only set the key if it already exist.
 	//TODO  parse  options SET	KEEPTTL -- Retain the time to live associated with the key.
-	//	GET -- Return the old value stored at key, or nil when key did not exist.
-
 	options := args[2:]
 	optionGET := false
 

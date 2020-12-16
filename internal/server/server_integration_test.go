@@ -42,7 +42,7 @@ func TestBasicOps(t *testing.T) {
 	val, err = rdb.Get(ctx, "x").Result()
 	common.AssertEquals(t, err, redis.Nil)
 
-	rdb.Close()
+	common.ExpectNoError(t, rdb.Close())
 	common.AssertEquals(t, <-events, EventAfterDisconnect)
 	quit <- true
 	common.AssertEquals(t, <-events, EventSuccessfulShutdown)
@@ -63,9 +63,7 @@ func TestUnsupportedCommand(t *testing.T) {
 	rdb := redis.NewClient(&redis.Options{
 		Addr: fmt.Sprintf("localhost:%d", port),
 	})
-	t.Cleanup(func() {
-		rdb.Close()
-	})
+
 	ctx := context.Background()
 
 	err := rdb.Incr(ctx, "x").Err()
@@ -73,7 +71,7 @@ func TestUnsupportedCommand(t *testing.T) {
 	if err.Error() != wantError {
 		t.Errorf("want error:%s , got: %s ", wantError, err.Error())
 	}
-	rdb.Close()
+	common.ExpectNoError(t, rdb.Close())
 	common.AssertEquals(t, <-events, EventAfterDisconnect)
 	quit <- true
 	common.AssertEquals(t, <-events, EventSuccessfulShutdown)
@@ -104,7 +102,7 @@ func TestClientConnectionsLifeCycle(t *testing.T) {
 	common.ExpectNoError(t, err)
 
 	common.AssertEquals(t, server.numConnectedClients(), 1)
-	rdb.Close()
+	common.ExpectNoError(t, rdb.Close())
 	event := <-events
 	common.AssertEquals(t, event, EventAfterDisconnect)
 	common.AssertEquals(t, server.numConnectedClients(), 0)
@@ -161,9 +159,9 @@ func TestMaxClients(t *testing.T) {
 	common.AssertEquals(t, <-events, EventAfterDisconnect)
 	common.AssertEquals(t, <-events, EventAfterDisconnect)
 	common.AssertEquals(t, <-events, EventSuccessfulShutdown)
-	client1.Close()
-	client2.Close()
-	client3.Close()
+	common.ExpectNoError(t, client1.Close())
+	common.ExpectNoError(t, client2.Close())
+	common.ExpectNoError(t, client3.Close())
 
 }
 
@@ -190,7 +188,7 @@ func TestServerLifecycle(t *testing.T) {
 	rdb := redis.NewClient(&redis.Options{
 		Addr: fmt.Sprintf("localhost:%d", port),
 	})
-	defer rdb.Close()
+
 	ctx := context.Background()
 	err := rdb.Set(ctx, "x", 1, 0).Err()
 	common.ExpectNoError(t, err)
@@ -200,5 +198,5 @@ func TestServerLifecycle(t *testing.T) {
 
 	common.AssertEquals(t, <-events, EventAfterDisconnect)
 	common.AssertEquals(t, <-events, EventSuccessfulShutdown)
-
+	common.ExpectNoError(t, rdb.Close())
 }

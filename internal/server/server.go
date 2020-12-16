@@ -375,5 +375,4 @@ func (s *server) shutdown() {
 		}
 		c.quit <- true
 	}
-
 }

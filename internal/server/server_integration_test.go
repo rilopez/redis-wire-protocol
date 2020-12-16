@@ -17,6 +17,7 @@ func TestBasicOps(t *testing.T) {
 	quit := make(chan bool, 1)
 	events := make(chan string, 2)
 	port := uint(10_001)
+
 	go Start(port, 1, ready, quit, events)
 
 	<-ready
@@ -43,13 +44,12 @@ func TestBasicOps(t *testing.T) {
 	rdb.Close()
 	common.AssertEquals(t, <-events, EventAfterDisconnect)
 	quit <- true
-
 	common.AssertEquals(t, <-events, EventSuccessfulShutdown)
 
 }
 
 func TestUnsupportedCommand(t *testing.T) {
-	t.Parallel()
+	defer goleak.VerifyNone(t)
 	ready := make(chan bool, 1)
 	quit := make(chan bool, 1)
 	events := make(chan string, 1)
@@ -72,6 +72,10 @@ func TestUnsupportedCommand(t *testing.T) {
 	if err.Error() != wantError {
 		t.Errorf("want error:%s , got: %s ", wantError, err.Error())
 	}
+	rdb.Close()
+	common.AssertEquals(t, <-events, EventAfterDisconnect)
+	quit <- true
+	common.AssertEquals(t, <-events, EventSuccessfulShutdown)
 
 }
 

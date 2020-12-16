@@ -52,14 +52,20 @@ func (c *Worker) receiveCommandsLoop() {
 		}
 		c.toServer <- cmd
 		cmdResponse := <-c.fromServer
-		if cmdResponse.CMD == common.RESPONSE {
+		switch cmdResponse.CMD {
+		case common.RESPONSE:
 			v, ok := cmdResponse.Arguments.(common.RESPONSEArguments)
 			if !ok {
 				log.Panicf("invalid response arguments %v", cmdResponse.Arguments)
 			}
 			writer.WriteString(v.Response)
 			writer.Flush()
+
+		case common.KILL:
+			log.Printf("client %d got kill signal stopping read loop", c.ID)
+			break
 		}
+
 	}
 }
 

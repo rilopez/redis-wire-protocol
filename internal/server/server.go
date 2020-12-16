@@ -104,36 +104,37 @@ func (s *server) listenConnections(wg *sync.WaitGroup, quitListening chan bool) 
 	defer func() {
 		ln.Close()
 		wg.Done()
+		log.Print("listened connections loop stopped")
 	}()
 
 	log.Printf("Server started listening for connections at %s ", fmt.Sprintf(":%d", s.port))
 	s.ready <- true
 	for {
-		select {
-		case <-quitListening:
-			log.Print("listenConnections got a quit signal ")
-			break
-		default:
-		}
-
 		ln.SetDeadline(time.Now().Add(idleTimeout))
 		conn, err := ln.Accept()
 		if err != nil {
-			log.Printf("Failed to accept connection: %v", err)
-			continue
-		}
-		client, err := s.registerClient(conn)
-		if err != nil {
-			conn.Close()
-			log.Printf("ERR trying to register a new client: %v", err)
-			continue
+			select {
+			case <-quitListening:
+				log.Print("listenConnections got a quit signal ")
+				return
+			default:
+				log.Printf("Failed to accept connection: %v", err)
+				continue
+			}
+		} else {
+			client, err := s.registerClient(conn)
+			if err != nil {
+				conn.Close()
+				log.Printf("ERR trying to register a new client: %v", err)
+				continue
+			}
+
+			log.Printf("client connection from %v", conn.RemoteAddr())
+			wg.Add(1)
+			go client.Read(wg)
 		}
 
-		log.Printf("client connection from %v", conn.RemoteAddr())
-		wg.Add(1)
-		go client.Read(wg)
 	}
-	log.Print("stoped connections listening loop")
 
 }
 
@@ -204,7 +205,8 @@ func (s *server) run(wg *sync.WaitGroup) {
 
 		if s.getState() == serverStateShuttingDown && s.numConnectedClients() == 0 {
 			log.Print("no more clients connected, exit now")
-			break
+			s.events <- EventSuccessfulShutdown
+			return
 		}
 	}
 }
@@ -230,7 +232,6 @@ func (s *server) handleCMD(cmd common.Command, err error, response string) {
 	client.lastCMDEpoch = s.now().UnixNano()
 
 	switch cmd.CMD {
-
 	case common.SET:
 		response, err = s.handleSET(cmd.Arguments)
 	case common.GET:
@@ -256,7 +257,7 @@ func (s *server) handleCMD(cmd common.Command, err error, response string) {
 		log.Printf("ERR %v", err)
 		response = resp.Error(err)
 	}
-	if len(response) != 0 {
+	if len(response) != 0 && cmd.CallbackChannel != nil {
 		cmd.CallbackChannel <- common.Command{
 			CMD: common.RESPONSE,
 			Arguments: common.RESPONSEArguments{
@@ -355,15 +356,14 @@ func (s *server) handleINFO() (string, error) {
 }
 
 func (s *server) shutdown() {
-	//log.Print("Shutting down server")
-	//s.setState(serverStateShuttingDown)
-	//s.mux.Lock()
-	//log.Printf("trying to kill %d connected clients", len(s.clients) )
-	//for id, c := range s.clients {
-	//	log.Printf("sending kill signal to client with ID :%d", id)
-	//	c.callbackChannel <- common.Command{
-	//		CMD: common.KILL,
-	//	}
-	//}
-	//s.mux.Unlock()
+	s.setState(serverStateShuttingDown)
+	s.mux.Lock()
+	log.Printf("trying to kill %d connected clients", len(s.clients))
+	for id, c := range s.clients {
+		log.Printf("sending kill signal to client with ID :%d", id)
+		c.callbackChannel <- common.Command{
+			CMD: common.KILL,
+		}
+	}
+	s.mux.Unlock()
 }

@@ -10,10 +10,6 @@ import (
 	"syscall"
 )
 
-func SetupCloseHandler(quit chan<- bool) {
-
-}
-
 func main() {
 	//Logging messages are written to os.Stderr.
 	log.SetOutput(os.Stderr)

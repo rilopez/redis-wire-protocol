@@ -88,23 +88,30 @@ func parseSETArguments(args []string) (cmdArgs common.CommandArguments, err erro
 		return nil, fmt.Errorf("invalid number of args for SET command : %v", args)
 	}
 
-	//TODO  parse  options SET  EX seconds -- Set the specified expire time, in seconds.
-	//TODO  parse  options SET	PX milliseconds -- Set the specified expire time, in milliseconds.
-	//TODO  parse  options SET	NX -- Only set the key if it does not already exist.
-	//TODO  parse  options SET	XX -- Only set the key if it already exist.
-	//TODO  parse  options SET	KEEPTTL -- Retain the time to live associated with the key.
 	options := args[2:]
 	optionGET := false
+	optionNX := false
+	optionXX := false
 
 	for _, flag := range options {
 		switch strings.ToUpper(flag) {
 		case "GET":
 			optionGET = true
+		case "NX":
+			optionNX = true
+		case "XX":
+			optionXX = true
 		}
 
 	}
 
-	return common.SETArguments{Key: args[0], Value: args[1], OptionGET: optionGET}, nil
+	return common.SETArguments{
+		Key:       args[0],
+		Value:     args[1],
+		OptionGET: optionGET,
+		OptionNX:  optionNX,
+		OptionXX:  optionXX,
+	}, nil
 
 }
 

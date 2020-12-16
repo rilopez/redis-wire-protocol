@@ -1,7 +1,12 @@
 /*
-Package server provides functionality for two kind of servers
- - TCP redis protocol (GET, SET, DEL commands only)
- - HTTP json healthcheck endpoints
+Package server provides functionality for a  redis protocol  over TCP. The server supports this limited set of commands
+
+- SET key value [NX|XX] [GET]
+- GET key
+- DEL key [key ...]
+- INFO
+- CLIENT [KILL | INFO | ID | LIST]
+
 
 The TCP redis server uses goroutines to handle each connected
 client.  These channels are used to communicate the client data to the server server
@@ -10,11 +15,7 @@ client.  These channels are used to communicate the client data to the server se
 	    used to by client connections to send cmd & data to server server.
 	    currently the server implements SET, GET & DEL commands
 
-
-These HTTP are the implemented json endpoints
-
-  - `GET /stats`: returns a JSON document which contains runtime statistical
-     information about the server (i.e. number of goroutines, bytes read per second, etc.).
+    connectedClient.response chan string
 
 */
 package server

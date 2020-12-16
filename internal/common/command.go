@@ -15,7 +15,6 @@ const (
 
 	// SET https://redis.io/commands/set
 	SET
-
 	// DEL https://redis.io/commands/del
 	DEL
 	// INFO https://redis.io/commands/info
@@ -23,7 +22,7 @@ const (
 	// CLIENT
 	//  https://redis.io/commands/client-list
 	//  https://redis.io/commands/client-info
-	//  https://redis.io/commands/client-ind
+	//  https://redis.io/commands/client-id
 	CLIENT
 
 	// INTERNAL_DEREGISTER used to indicate the client to log itself out
@@ -63,14 +62,12 @@ type RESPONSEArguments struct {
 type SETArguments struct {
 	Key   string
 	Value string
-
-	//TODO support SET EX seconds -- Set the specified expire time, in seconds.
-	//TODO support SET	PX milliseconds -- Set the specified expire time, in milliseconds.
-	//TODO support SET	NX -- Only set the key if it does not already exist.
-	//TODO support SET	XX -- Only set the key if it already exist.
-	//TODO support SET	KEEPTTL -- Retain the time to live associated with the key.
 	//OptionGET -- Return the old value stored at key, or nil when key did not exist.
 	OptionGET bool
+	//OptionNX -- Only set the key if it does not already exist.
+	OptionNX bool
+	//OptionXX -- Only set the key if it already exist.
+	OptionXX bool
 }
 
 type GETArguments struct {

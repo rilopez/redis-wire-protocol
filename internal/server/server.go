@@ -269,6 +269,7 @@ func (s *server) handleCMD(cmd common.Command, err error, response string) {
 		response, err = s.handleCLIENT(cmd.Arguments, c)
 	case common.UNKNOWN:
 		err = fmt.Errorf("unsupported command %v", cmd.Arguments)
+	//TODO change to client kill
 	case common.INTERNAL_DEREGISTER:
 		err = s.disconnect(c.ID)
 	default:
@@ -323,15 +324,31 @@ func (s *server) handleSET(args common.CommandArguments) (response string, err e
 		return "-ERR", fmt.Errorf("invalid SET argments %v", args)
 	}
 	var prevValue *string
+	needToSet := false
+	response = resp.BulkString(nil)
 	s.mux.Lock()
-	prevValue = s.db[setArgs.Key]
-	s.db[setArgs.Key] = &setArgs.Value
+	prevValue, ok = s.db[setArgs.Key]
+
+	if setArgs.OptionNX && !ok {
+		//Only set the key if it does not already exist.
+		needToSet = true
+	} else if setArgs.OptionXX && ok {
+		//Only set the key if it already exist.
+		needToSet = true
+	} else if !setArgs.OptionNX && !setArgs.OptionXX {
+		needToSet = true
+	}
+	if needToSet {
+		s.db[setArgs.Key] = &setArgs.Value
+		response = resp.SimpleString("OK")
+	}
+
 	s.mux.Unlock()
 
 	if setArgs.OptionGET {
-		return resp.BulkString(prevValue), nil
+		response = resp.BulkString(prevValue)
 	}
-	return resp.SimpleString("OK"), nil
+	return
 }
 
 func (s *server) handleGET(args common.CommandArguments) (response string, err error) {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 
@@ -18,7 +19,22 @@ func main() {
 	flag.Parse()
 	ready := make(chan bool, 1)
 	quit := make(chan bool, 1)
-	events := make(chan string, 1)
-	server.Start(*serverPort, *serverMaxClients, ready, quit, events)
+	events := make(chan string, 100)
+	go func() {
+		for {
+			select {
+			case event := <-events:
+				if event == server.EventSuccessfulShutdown {
+					fmt.Println("Bye")
+					return
+				}
+			default:
 
+			}
+		}
+	}()
+	server.Start(*serverPort, *serverMaxClients, ready, quit, events)
+	close(events)
+	close(quit)
+	close(ready)
 }

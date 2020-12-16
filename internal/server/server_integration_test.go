@@ -78,7 +78,6 @@ func TestUnsupportedCommand(t *testing.T) {
 }
 
 func TestClientConnectionsLifeCycle(t *testing.T) {
-
 	defer goleak.VerifyNone(t)
 
 	ready := make(chan bool, 1)

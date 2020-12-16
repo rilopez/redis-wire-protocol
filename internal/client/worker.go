@@ -12,7 +12,7 @@ import (
 	"github.com/rilopez/redis-wire-protocol/internal/common"
 )
 
-const idleTimeout = 500 * time.Millisecond
+const idleTimeout = 20 * time.Millisecond
 
 // Worker is used to handle a client connection
 type Worker struct {
@@ -51,7 +51,7 @@ func (c *Worker) receiveCommandsLoop() {
 				log.Printf("worker with ID %d got quick signal stopping reading loop ", c.ID)
 				return
 			default:
-				if err, ok := err.(net.Error); ok && err.Timeout() {
+				if errTimeout, ok := err.(net.Error); ok && errTimeout.Timeout() {
 					continue
 				} else {
 					log.Printf("ERR  readCommand :%v ", err)

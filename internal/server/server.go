@@ -336,7 +336,7 @@ func (s *server) disconnect(clientID uint64) error {
 	s.mux.Lock()
 	delete(s.clients, clientID)
 	s.mux.Unlock()
-	log.Printf("client with ID %d desconnected succesfuly", clientID)
+	log.Printf("client with ID %d disconnected succesfuly", clientID)
 
 	s.events <- EventAfterDisconnect
 	return nil

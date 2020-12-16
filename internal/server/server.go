@@ -165,7 +165,6 @@ func (s *server) registerClient(conn net.Conn) (*client.Worker, error) {
 		log.Panicf("duplicated client ID %d", s.nextClientId)
 	}
 
-	//TODO  try to delete callback chan
 	response := make(chan string)
 	quit := make(chan bool)
 	client, err := client.NewWorker(
@@ -262,12 +261,6 @@ func (s *server) handleCMD(cmd common.Command, err error, response string) {
 		response, err = s.handleINFO()
 	case common.CLIENT:
 		response, err = s.handleCLIENT(cmd.Arguments, client)
-
-		//TODO support CLIENT
-		//TODO support CLIENT LIST
-		//TODO support PING
-		//TODO support ECHO
-
 	case common.UNKNOWN:
 		err = fmt.Errorf("unsupported command %v", cmd.Arguments)
 	case common.INTERNAL_DEREGISTER:

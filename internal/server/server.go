@@ -290,7 +290,6 @@ func (s *server) handleSET(args common.CommandArguments) (response string, err e
 	if !ok {
 		return "-ERR", fmt.Errorf("invalid SET argments %v", args)
 	}
-	log.Printf("SET with args  %v", setArgs)
 	s.mux.Lock()
 	s.db[setArgs.Key] = &setArgs.Value
 	s.mux.Unlock()
@@ -303,7 +302,6 @@ func (s *server) handleGET(args common.CommandArguments) (response string, err e
 	if !ok {
 		return "-ERR", fmt.Errorf("invalid GET argments %v", args)
 	}
-	log.Printf("GET with args  %v", getArgs)
 	s.mux.Lock()
 	value, _ := s.db[getArgs.Key]
 	s.mux.Unlock()
@@ -327,7 +325,6 @@ func (s *server) handleDEL(args common.CommandArguments) (response string, err e
 		delete(s.db, k)
 	}
 	s.mux.Unlock()
-	log.Printf("DEL with args  %v", delArgs)
 
 	return resp.Integer(opStatus), nil
 }

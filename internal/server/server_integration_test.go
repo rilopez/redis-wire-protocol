@@ -68,8 +68,8 @@ func TestUnsupportedCommand(t *testing.T) {
 
 	err := rdb.Incr(ctx, "x").Err()
 	wantError := "unsupported command [incr x]"
-	if err.Error() != wantError {
-		t.Errorf("want error:%s , got: %s ", wantError, err.Error())
+	if err == nil || err.Error() != wantError {
+		t.Errorf("want error:%s , got: %s ", wantError, err)
 	}
 	common.ExpectNoError(t, rdb.Close())
 	common.AssertEquals(t, <-events, EventAfterDisconnect)

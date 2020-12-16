@@ -22,7 +22,7 @@ func DeserializeCMD(reader *textproto.Reader) (common.CommandID, common.CommandA
 	if arrayHeaderLine[0] != '*' {
 		return common.UNKNOWN, nil, fmt.Errorf("expecting first byte to be *, got %c", arrayHeaderLine[0])
 	}
-	numItems, err := strconv.Atoi(string(arrayHeaderLine[1:]))
+	numItems, err := strconv.Atoi(arrayHeaderLine[1:])
 	if err != nil {
 		return common.UNKNOWN, nil, fmt.Errorf("invalid array size characters %s", arrayHeaderLine[1:])
 	}
@@ -36,7 +36,7 @@ func DeserializeCMD(reader *textproto.Reader) (common.CommandID, common.CommandA
 		if stringHeaderLine[0] != '$' {
 			return common.UNKNOWN, nil, fmt.Errorf("expecting first byte to be $, got %c", stringHeaderLine[0])
 		}
-		numBytes, err := strconv.Atoi(string(stringHeaderLine[1:]))
+		numBytes, err := strconv.Atoi(stringHeaderLine[1:])
 		str, err := reader.ReadLine()
 		if err != nil {
 			return common.UNKNOWN, nil, err
@@ -47,7 +47,7 @@ func DeserializeCMD(reader *textproto.Reader) (common.CommandID, common.CommandA
 		bulkStringArray = append(bulkStringArray, str)
 	}
 
-	if bulkStringArray == nil && len(bulkStringArray) == 0 {
+	if bulkStringArray == nil || len(bulkStringArray) == 0 {
 		return common.UNKNOWN, nil, fmt.Errorf("no command read")
 	}
 

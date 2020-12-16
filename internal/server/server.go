@@ -353,7 +353,7 @@ func (s *server) handleDEL(args common.CommandArguments) (response string, err e
 	}
 
 	s.mux.Lock()
-	var opStatus int = 0
+	var opStatus = 0
 	for _, k := range delArgs.Keys {
 		_, exists := s.db[k]
 		if exists {

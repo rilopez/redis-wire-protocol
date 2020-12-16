@@ -12,7 +12,7 @@ import (
 	"github.com/rilopez/redis-wire-protocol/internal/common"
 )
 
-const idleTimeout = 2 * time.Second
+const idleTimeout = 500 * time.Millisecond
 
 // Worker is used to handle a client connection
 type Worker struct {

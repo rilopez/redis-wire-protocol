@@ -78,12 +78,12 @@ func TestUnsupportedCommand(t *testing.T) {
 }
 
 func TestClientConnectionsLifeCycle(t *testing.T) {
-	t.Parallel()
-	//defer goleak.VerifyNone(t)
+
+	defer goleak.VerifyNone(t)
 
 	ready := make(chan bool, 1)
-	quit := make(chan bool, 1)
-	events := make(chan string, 1)
+	quit := make(chan bool)
+	events := make(chan string)
 	port := uint(10_003)
 	server := newServer(time.Now, port, 1, ready, quit, events)
 	var wg sync.WaitGroup
@@ -107,15 +107,14 @@ func TestClientConnectionsLifeCycle(t *testing.T) {
 	common.AssertEquals(t, event, EventAfterDisconnect)
 	common.AssertEquals(t, server.numConnectedClients(), 0)
 
-	//quit <- true
-	//serverEvent:= <-events
-	//common.AssertEquals(t, serverEvent, EventSuccessfulShutdown)
+	quit <- true
+
+	common.AssertEquals(t, <-events, EventSuccessfulShutdown)
 
 }
 
 func TestMaxClients(t *testing.T) {
-	t.Parallel()
-	//defer goleak.VerifyNone(t)
+	defer goleak.VerifyNone(t)
 
 	ready := make(chan bool, 1)
 	quit := make(chan bool)
@@ -160,6 +159,9 @@ func TestMaxClients(t *testing.T) {
 	common.AssertEquals(t, <-events, EventAfterDisconnect)
 	common.AssertEquals(t, <-events, EventAfterDisconnect)
 	common.AssertEquals(t, <-events, EventSuccessfulShutdown)
+	client1.Close()
+	client2.Close()
+	client3.Close()
 
 }
 
